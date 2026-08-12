@@ -19,7 +19,7 @@ phase sections below describe design intent and are annotated with completion st
 | **1** — `be-rng` + `be-struct` | ✅ **Complete.** Streaming MT, full version table, feasibility pre-check. |
 | **2** — `be-verify` + `be-corpus` | ✅ **Complete.** BDS harness, `/locate` parser, corpus generator, accuracy reporting. *Note the harness divergence below.* |
 | **3** — `cubiomes-sys` + `be-biome` | ✅ **Complete; biome validation GREEN.** FFI, Bedrock ID map, query/gate/grid all built and green, and cubiomes output now **validated 100%** against a matched-version 1.21.40 Bedrock server (and the live 1.26.43 server). |
-| **4** — `be-search` | ⬜ **Not started.** |
+| **4** — `be-search` | 🚧 **Structural engine (items 1–5) complete.** Query IR + text DSL (round-trip), feasibility pre-check with reasons (shared-slot / triangle-inequality / spacing), rarest-first join planner + adaptive mode, nested-loop executor with per-seed memoisation + rayon, invariant re-check. SSE + Phase C verification wiring (item 6) deferred to Phase 5. |
 | **5** — `server` + `ui` | ⬜ **Not started.** |
 | **6** — Optimization | ⬜ **Not started.** |
 
@@ -606,8 +606,15 @@ mapping, validate against LevelDB `Data3D` grids.
 4. Nested-loop bind-and-backtrack executor, per-seed memoisation, rayon.
 5. Adaptive mode selection (exhaustive vs satisficing) + honest mode reporting.
 6. SSE streaming, Phase C verification wired in.
-> **⬜ Not started.** Recommended prerequisite: stand up the 1.21.40 validation server
-> (§4) so Phase B biome gates are not built on unvalidated cubiomes output.
+> **🚧 Items 1–5 complete.** `be-search` implements the IR, DSL (plan-example round-trip +
+> three-temples graph fixture), feasibility (`shared_slot_conflict_is_detected`,
+> `triangle_inequality_violation_is_detected`, `same_structure_too_close_is_detected`),
+> planner (`rarest_structure_binds_first`, `relational_query_is_satisficing`), and the
+> executor with `sequential_and_parallel_agree` + planner-vs-brute-force invariant
+> (`tests/planner_invariant.rs`). Item 6 (SSE + Phase C) is wired in Phase 5 when the
+> server exists; the executor's `search_range`/`search_range_par` are the streaming seam.
+> The 1.21.40 validation server was stood up and removed (§4), so Phase B biome gates are
+> built on validated cubiomes output.
 
 **Phase 5 — `server` + `ui`.** REST/SSE, tile renderer, canvas map, **route builder**
 with live feasibility feedback, DSL editor with round-trip, accuracy display.
