@@ -1,4 +1,5 @@
 // ResultsList — the accumulated search hits with their seed + bound positions.
+// Single-click selects a result; double-click copies the seed to the clipboard.
 
 import type { SearchResult } from "../types";
 
@@ -7,10 +8,11 @@ interface ResultsListProps {
   running: boolean;
   done: boolean;
   onSelect: (r: SearchResult) => void;
+  onCopy: (r: SearchResult) => void;
   selectedSeed: string | null;
 }
 
-export function ResultsList({ results, running, done, onSelect, selectedSeed }: ResultsListProps) {
+export function ResultsList({ results, running, done, onSelect, onCopy, selectedSeed }: ResultsListProps) {
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-2">
       <div className="flex items-baseline justify-between">
@@ -28,6 +30,8 @@ export function ResultsList({ results, running, done, onSelect, selectedSeed }: 
             <li key={r.seed + r.positions.map((p) => `${p.name}${p.x},${p.z}`).join(";")}>
               <button
                 onClick={() => onSelect(r)}
+                onDoubleClick={() => onCopy(r)}
+                title="Double-click to copy the seed"
                 className={`w-full rounded border px-2 py-1 text-left text-xs transition-colors ${
                   selectedSeed === r.seed
                     ? "border-sky-600 bg-sky-950 text-sky-200"

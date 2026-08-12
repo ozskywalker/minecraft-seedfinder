@@ -58,7 +58,17 @@ export async function streamSearch(
     signal,
   });
   if (!resp.ok || !resp.body) {
-    throw new Error(`search request failed (HTTP ${resp.status})`);
+    // A non-2xx from /api/search is a DSL parse error: the server responds with the
+    // human-readable reason (e.g. "line 1: unknown anchor 'v1'"). Surface it so the
+    // user isn't left staring at a bare "HTTP 400".
+    let detail = "";
+    try {
+      detail = await resp.text();
+    } catch {
+      /* best-effort; keep the generic message */
+    }
+    const suffix = detail.trim() ? `: ${detail.trim()}` : "";
+    throw new Error(`search request failed (HTTP ${resp.status})${suffix}`);
   }
 
   const reader = resp.body.getReader();

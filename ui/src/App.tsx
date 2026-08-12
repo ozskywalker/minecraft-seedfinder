@@ -7,6 +7,7 @@ import { ResultsList } from "./components/ResultsList";
 import { RouteBuilder } from "./components/RouteBuilder";
 import { SearchPanel } from "./components/SearchPanel";
 import type { Camera } from "./lib/camera";
+import { copyText } from "./lib/clipboard";
 import { streamSearch, type SearchEvent } from "./lib/sse";
 import { applyToUrl, decode } from "./lib/urlstate";
 import type { Catalog, ModeInfo, SearchResult } from "./types";
@@ -28,8 +29,10 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [selectedSeed, setSelectedSeed] = useState<string | null>(null);
+  const [copiedSeed, setCopiedSeed] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
+  const copyTimerRef = useRef<number | null>(null);
   const base = ""; // same origin (dev proxy / production both serve /api)
 
   // Load the structure catalog once.
@@ -96,6 +99,24 @@ export function App() {
     setRunning(false);
   }
 
+  // Copy a result's seed to the clipboard and flash a confirmation toast. The toast
+  // is shown only on a successful copy (never fabricated).
+  async function onCopyResult(r: SearchResult) {
+    const ok = await copyText(r.seed);
+    if (ok) {
+      setCopiedSeed(r.seed);
+      if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = window.setTimeout(() => setCopiedSeed(null), 2500);
+    }
+  }
+
+  // Clear any pending toast timer on unmount.
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
+    };
+  }, []);
+
   const selected = results.find((r) => r.seed === selectedSeed);
   const shownResults = selected ? [selected] : results.slice(-1);
 
@@ -131,6 +152,7 @@ export function App() {
             running={running}
             done={done}
             onSelect={(r) => setSelectedSeed(r.seed)}
+            onCopy={onCopyResult}
             selectedSeed={selectedSeed}
           />
         </aside>
@@ -139,6 +161,12 @@ export function App() {
           <MapCanvas seed={seed} camera={camera} results={shownResults} onCameraChange={setCamera} />
         </main>
       </div>
+
+      {copiedSeed !== null && (
+        <div className="pointer-events-none fixed bottom-4 right-4 z-50 rounded border border-emerald-700 bg-emerald-950 px-3 py-2 text-sm text-emerald-300 shadow-lg">
+          Copied seed <span className="font-mono font-semibold text-emerald-200">{copiedSeed}</span> to clipboard
+        </div>
+      )}
     </div>
   );
 }

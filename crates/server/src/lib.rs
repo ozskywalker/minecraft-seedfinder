@@ -254,7 +254,18 @@ pub async fn serve_with(
 pub fn browser_command(url: &str) -> Vec<String> {
     #[cfg(target_os = "windows")]
     {
-        vec!["cmd".to_string(), "/C".to_string(), format!("start \"\" \"{url}\"")]
+        // Pass each token as its own argument. If we embedded the whole
+        // `start "" "url"` as one string, Rust's Windows quoting would wrap it and
+        // escape the inner `"` as `\"`, which `cmd` then sees as literal backslashes
+        // (`start \ \http://...\`) and errors on. Splitting the tokens keeps the
+        // empty window-title and the URL unquoted so `cmd` parses them correctly.
+        vec![
+            "cmd".to_string(),
+            "/C".to_string(),
+            "start".to_string(),
+            String::new(), // empty window title — without it `start` treats the URL as the title
+            url.to_string(),
+        ]
     }
     #[cfg(target_os = "macos")]
     {
@@ -303,7 +314,11 @@ mod tests {
         {
             let cmd = browser_command("http://127.0.0.1:8080");
             assert_eq!(cmd[0], "cmd");
-            assert!(cmd[2].contains("http://127.0.0.1:8080"));
+            assert_eq!(cmd[1], "/C");
+            assert_eq!(cmd[2], "start");
+            // Empty window title, then the URL, as separate tokens.
+            assert_eq!(cmd[3], "");
+            assert!(cmd[4].contains("http://127.0.0.1:8080"));
         }
         #[cfg(target_os = "macos")]
         {
