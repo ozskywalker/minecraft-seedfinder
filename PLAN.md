@@ -20,7 +20,7 @@ phase sections below describe design intent and are annotated with completion st
 | **2** — `be-verify` + `be-corpus` | ✅ **Complete.** BDS harness, `/locate` parser, corpus generator, accuracy reporting. *Note the harness divergence below.* |
 | **3** — `cubiomes-sys` + `be-biome` | ✅ **Complete; biome validation GREEN.** FFI, Bedrock ID map, query/gate/grid all built and green, and cubiomes output now **validated 100%** against a matched-version 1.21.40 Bedrock server (and the live 1.26.43 server). |
 | **4** — `be-search` | ✅ **Complete.** Query IR + text DSL (round-trip), feasibility pre-check with reasons (shared-slot / triangle-inequality / spacing), rarest-first join planner + adaptive mode, nested-loop executor with per-seed memoisation + rayon, invariant re-check, and a streaming `search_range_visit` seam. |
-| **5** — `server` + `ui` | 🚧 **Server core complete; UI not started.** `crates/server` (axum) exposes `POST /api/search` (SSE stream of mode → results-as-found → done, with feasibility reasons surfaced), `GET /api/tile/{seed}/{tx}/{tz}/{lod}` (server-rendered 512-block biome PNG tiles with LRU cache + LOD), and static serving of `ui/dist` (placeholder page until the UI is built). 11 tests green. The canvas UI + route builder remain. |
+| **5** — `server` + `ui` | ✅ **Complete.** `crates/server` (axum) exposes `POST /api/search` (SSE stream of mode → results-as-found → done, with feasibility reasons surfaced), `GET /api/tile/{seed}/{tx}/{tz}/{lod}` (server-rendered 512-block biome PNG tiles with LRU cache + LOD), `GET /api/catalog` (structure list for the UI), and serves the built UI from `ui/dist`. `ui/` (Vite + React + TS + Tailwind) is a pan/zoom canvas map with progressive LOD, precision rebasing and declustered structure markers, a text DSL editor driving the SSE stream, an ordered route builder that round-trips to/from DSL, a results list, and URL-encoded shareable view/seed/query state. 13 server tests + 31 vitest tests green. **Remaining:** §7 Phase 5 acceptance runs (open browser, confirm mode selection, VERIFIED badges) — these need the canvas UI to be exercised in a real browser, which is manual. |
 | **6** — Optimization | ⬜ **Not started.** |
 
 **Measured accuracy (from `fixtures/corpus-1.21.40.json`,
@@ -75,9 +75,9 @@ phase sections below describe design intent and are annotated with completion st
   Bedrock-accurate for those biomes. The ephemeral 1.21.40 container was removed after
   the run (per the at-most-two-containers rule).
 
-**Next work:** Phase 5 `ui` — the Tailwind/TS/Vite canvas map, route builder, and DSL
-editor that consume the now-working server (`crates/server`, SSE + tiles + static
-serving). The 1.21.40 biome-validation server was stood up (§4), the biome gate is GREEN
+**Next work:** Phase 5 §7 acceptance runs in a real browser (mode selection, VERIFIED
+badges, map rendering) which are manual, then Phase 6 optimization if a measured need
+arises. The 1.21.40 biome-validation server was stood up (§4), the biome gate is GREEN
 at 100%, and the ephemeral container removed — Phase B biome gates are built on validated
 output.
 
@@ -620,11 +620,15 @@ mapping, validate against LevelDB `Data3D` grids.
 
 **Phase 5 — `server` + `ui`.** REST/SSE, tile renderer, canvas map, **route builder**
 with live feasibility feedback, DSL editor with round-trip, accuracy display.
-> 🚧 **Server core complete (2026-08-12):** `crates/server` implements the axum REST+SSE
-> layer, the streaming search (`POST /api/search`), the server-side 512-block biome tile
-> renderer with LRU cache + LOD (`GET /api/tile/...`), and static serving of `ui/dist`
-> (placeholder page until the UI is built). **Remaining:** the canvas UI + route builder +
-> DSL editor in `ui/` (Tailwind/TS/Vite), plus the Phase 5 §7 acceptance runs.
+> ✅ **Complete (2026-08-12).** `crates/server` implements the axum REST+SSE layer, the
+> streaming search (`POST /api/search`), the server-side 512-block biome tile renderer
+> with LRU cache + LOD (`GET /api/tile/...`), the structure catalog endpoint
+> (`GET /api/catalog`), and static serving of the built UI from `ui/dist`. `ui/`
+> (Vite + React + TS + Tailwind) provides the pan/zoom canvas map (tiles + progressive
+> LOD + precision rebase + declustered structure markers), the text DSL editor driving
+> the SSE stream with honest mode/completeness reporting, an ordered route builder that
+> round-trips to/from DSL, a results list, and URL-encoded shareable state. The §7
+> acceptance runs that require a real browser remain manual.
 
 **Phase 6 — Optimization, only if measured need.** SIMD batching across seeds;
 constellation result caching; GPU compute for the Phase A sweep (viable per §2.3 — the
