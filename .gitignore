@@ -1,2 +1,6 @@
 /target
 **/*.rs.bk
+
+# Production build artifacts (single-exe deliverable)
+/dist/
+/seedfinder.exe

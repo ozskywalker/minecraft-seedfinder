@@ -32,6 +32,7 @@ use tokio::sync::mpsc;
 use crate::search::SearchJob;
 use crate::tiles::TileCache;
 
+pub mod assets;
 pub mod search;
 pub mod tiles;
 
@@ -79,28 +80,32 @@ fn default_true() -> bool {
 
 /// Build the application router.
 ///
-/// Static UI assets are served from the directory named by the `SEEDFINDER_UI_DIR`
-/// env var (default `ui/dist` relative to the current working directory). If the
-/// directory is absent, the index route falls back to a placeholder page.
+/// Two serving modes:
+/// - **Production (single `.exe`):** if the UI is embedded (see [`assets`]), all
+///   non-API requests are served from the binary with an SPA fallback to `index.html`.
+/// - **Dev:** otherwise the UI is served from the `SEEDFINDER_UI_DIR` dir (default
+///   `../../ui/dist` anchored to the crate), falling back to a placeholder page.
 pub fn app(state: AppState) -> Router {
-    // Default UI dir is anchored to the crate so it works regardless of cwd (tests run
-    // from crates/server; the binary may be run from anywhere). Overridable via env.
-    let ui_dir = std::env::var("SEEDFINDER_UI_DIR").unwrap_or_else(|_| {
-        concat!(env!("CARGO_MANIFEST_DIR"), "/../../ui/dist").to_string()
-    });
-    let static_service = tower_http::services::ServeDir::new(&ui_dir)
-        .not_found_service(tower_http::services::ServeFile::new(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/src/index_placeholder.html"
-        )));
-    Router::new()
+    let api = Router::new()
         .route("/api/search", post(search_handler))
         .route("/api/tile/{seed}/{tx}/{tz}/{lod}", get(tile_handler))
-        .route("/api/catalog", get(catalog_handler))
-        // Serve the built UI from ui/dist (ServeDir serves index.html for `/`). If the
-        // UI isn't built, requests fall through to the placeholder page.
-        .fallback_service(static_service)
-        .with_state(state)
+        .route("/api/catalog", get(catalog_handler));
+
+    if assets::EMBEDDED {
+        api.fallback(assets::embedded_ui_handler).with_state(state)
+    } else {
+        // Default UI dir is anchored to the crate so it works regardless of cwd (tests
+        // run from crates/server; the binary may be run from anywhere). Overridable.
+        let ui_dir = std::env::var("SEEDFINDER_UI_DIR").unwrap_or_else(|_| {
+            concat!(env!("CARGO_MANIFEST_DIR"), "/../../ui/dist").to_string()
+        });
+        let static_service = tower_http::services::ServeDir::new(&ui_dir)
+            .not_found_service(tower_http::services::ServeFile::new(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/src/index_placeholder.html"
+            )));
+        api.fallback_service(static_service).with_state(state)
+    }
 }
 
 /// The structure catalog: the authoritative list of structures (keys + biome gates +
@@ -224,9 +229,57 @@ async fn tile_handler(
 /// Run the server on `addr`, returning when it's ready (for tests) — otherwise the
 /// caller awaits forever.
 pub async fn serve(addr: SocketAddr, state: AppState) -> std::io::Result<()> {
-    let app = app(state);
+    serve_with(addr, state, None).await
+}
+
+/// Run the server, invoking `on_ready` (with the bound address) once the listener is up.
+/// `main` uses this to open the default browser in the background. Tests pass `None`.
+pub async fn serve_with(
+    addr: SocketAddr,
+    state: AppState,
+    on_ready: Option<Box<dyn FnOnce(SocketAddr) + Send>>,
+) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, app).await.map_err(|e| std::io::Error::other(e.to_string()))
+    let bound = listener.local_addr()?;
+    if let Some(f) = on_ready {
+        f(bound);
+    }
+    axum::serve(listener, app(state))
+        .await
+        .map_err(|e| std::io::Error::other(e.to_string()))
+}
+
+/// The command (program + args) used to open a URL in the platform's default browser.
+/// Pure so it's unit-testable; `open_browser` spawns it.
+pub fn browser_command(url: &str) -> Vec<String> {
+    #[cfg(target_os = "windows")]
+    {
+        vec!["cmd".to_string(), "/C".to_string(), format!("start \"\" \"{url}\"")]
+    }
+    #[cfg(target_os = "macos")]
+    {
+        vec!["open".to_string(), url.to_string()]
+    }
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        vec!["xdg-open".to_string(), url.to_string()]
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos", unix)))]
+    {
+        let _ = url;
+        vec![]
+    }
+}
+
+/// Open `url` in the default browser (best-effort, detached, never blocks the server).
+pub fn open_browser(url: &str) {
+    let cmd = browser_command(url);
+    if cmd.is_empty() {
+        return;
+    }
+    let mut c = std::process::Command::new(&cmd[0]);
+    c.args(&cmd[1..]);
+    let _ = c.spawn(); // best-effort; ignore failure (e.g. headless CI)
 }
 
 // Re-export not needed; `async-stream` is used directly via the macro.
@@ -242,6 +295,50 @@ mod tests {
         // A sane tile cache default: enough to hold a modest viewport without unbounded
         // memory growth.
         assert!(state.tiles.get("0:0:0:0").is_none());
+    }
+
+    #[test]
+    fn browser_command_opens_default_browser() {
+        #[cfg(target_os = "windows")]
+        {
+            let cmd = browser_command("http://127.0.0.1:8080");
+            assert_eq!(cmd[0], "cmd");
+            assert!(cmd[2].contains("http://127.0.0.1:8080"));
+        }
+        #[cfg(target_os = "macos")]
+        {
+            assert_eq!(browser_command("http://x"), vec!["open".to_string(), "http://x".to_string()]);
+        }
+        #[cfg(all(unix, not(target_os = "macos")))]
+        {
+            assert_eq!(browser_command("http://x"), vec!["xdg-open".to_string(), "http://x".to_string()]);
+        }
+    }
+
+    #[tokio::test]
+    async fn serve_with_invokes_ready_with_bound_addr() {
+        use std::net::SocketAddr;
+        use tokio::sync::oneshot;
+
+        let (tx, rx) = oneshot::channel::<SocketAddr>();
+        let state = AppState::default();
+        let task = tokio::spawn(async move {
+            let _ = serve_with(
+                "127.0.0.1:0".parse().unwrap(),
+                state,
+                Some(Box::new(move |addr| {
+                    // oneshot send is non-blocking, safe to call from the async runtime.
+                    let _ = tx.send(addr);
+                })),
+            )
+            .await;
+        });
+        let bound = tokio::time::timeout(std::time::Duration::from_secs(5), rx)
+            .await
+            .expect("ready callback fired")
+            .expect("received addr");
+        assert!(bound.port() != 0, "bound to an ephemeral port");
+        task.abort();
     }
 
     #[tokio::test]
