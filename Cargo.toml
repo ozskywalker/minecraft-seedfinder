@@ -8,6 +8,7 @@ members = [
     "crates/cubiomes-sys",
     "crates/be-biome",
     "crates/be-search",
+    "crates/server",
 ]
 
 [workspace.package]

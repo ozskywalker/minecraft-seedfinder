@@ -19,8 +19,8 @@ phase sections below describe design intent and are annotated with completion st
 | **1** — `be-rng` + `be-struct` | ✅ **Complete.** Streaming MT, full version table, feasibility pre-check. |
 | **2** — `be-verify` + `be-corpus` | ✅ **Complete.** BDS harness, `/locate` parser, corpus generator, accuracy reporting. *Note the harness divergence below.* |
 | **3** — `cubiomes-sys` + `be-biome` | ✅ **Complete; biome validation GREEN.** FFI, Bedrock ID map, query/gate/grid all built and green, and cubiomes output now **validated 100%** against a matched-version 1.21.40 Bedrock server (and the live 1.26.43 server). |
-| **4** — `be-search` | 🚧 **Structural engine (items 1–5) complete.** Query IR + text DSL (round-trip), feasibility pre-check with reasons (shared-slot / triangle-inequality / spacing), rarest-first join planner + adaptive mode, nested-loop executor with per-seed memoisation + rayon, invariant re-check. SSE + Phase C verification wiring (item 6) deferred to Phase 5. |
-| **5** — `server` + `ui` | ⬜ **Not started.** |
+| **4** — `be-search` | ✅ **Complete.** Query IR + text DSL (round-trip), feasibility pre-check with reasons (shared-slot / triangle-inequality / spacing), rarest-first join planner + adaptive mode, nested-loop executor with per-seed memoisation + rayon, invariant re-check, and a streaming `search_range_visit` seam. |
+| **5** — `server` + `ui` | 🚧 **Server core complete; UI not started.** `crates/server` (axum) exposes `POST /api/search` (SSE stream of mode → results-as-found → done, with feasibility reasons surfaced), `GET /api/tile/{seed}/{tx}/{tz}/{lod}` (server-rendered 512-block biome PNG tiles with LRU cache + LOD), and static serving of `ui/dist` (placeholder page until the UI is built). 11 tests green. The canvas UI + route builder remain. |
 | **6** — Optimization | ⬜ **Not started.** |
 
 **Measured accuracy (from `fixtures/corpus-1.21.40.json`,
@@ -75,9 +75,11 @@ phase sections below describe design intent and are annotated with completion st
   Bedrock-accurate for those biomes. The ephemeral 1.21.40 container was removed after
   the run (per the at-most-two-containers rule).
 
-**Next work:** Phase 4 (`be-search`). The 1.21.40 biome-validation server was stood up
-(§4), the biome gate is GREEN at 100%, and the ephemeral container removed — Phase B
-biome gates can now be built on validated output.
+**Next work:** Phase 5 `ui` — the Tailwind/TS/Vite canvas map, route builder, and DSL
+editor that consume the now-working server (`crates/server`, SSE + tiles + static
+serving). The 1.21.40 biome-validation server was stood up (§4), the biome gate is GREEN
+at 100%, and the ephemeral container removed — Phase B biome gates are built on validated
+output.
 
 ---
 
@@ -618,7 +620,11 @@ mapping, validate against LevelDB `Data3D` grids.
 
 **Phase 5 — `server` + `ui`.** REST/SSE, tile renderer, canvas map, **route builder**
 with live feasibility feedback, DSL editor with round-trip, accuracy display.
-> **⬜ Not started.**
+> 🚧 **Server core complete (2026-08-12):** `crates/server` implements the axum REST+SSE
+> layer, the streaming search (`POST /api/search`), the server-side 512-block biome tile
+> renderer with LRU cache + LOD (`GET /api/tile/...`), and static serving of `ui/dist`
+> (placeholder page until the UI is built). **Remaining:** the canvas UI + route builder +
+> DSL editor in `ui/` (Tailwind/TS/Vite), plus the Phase 5 §7 acceptance runs.
 
 **Phase 6 — Optimization, only if measured need.** SIMD batching across seeds;
 constellation result caching; GPU compute for the Phase A sweep (viable per §2.3 — the
@@ -630,8 +636,8 @@ streaming MT's tiny working set means per-thread state is a handful of words, no
 ## 7. Verification
 
 1. `cargo test --workspace` — unit, property, golden, invariant. **Green as of 2026-08-12**
-   (89 tests, 0 failures across `be-rng`, `be-struct`, `be-verify`, `be-corpus`,
-   `be-biome`, `cubiomes-sys`).
+   (144 tests, 0 failures across `be-rng`, `be-struct`, `be-verify`, `be-corpus`,
+   `be-biome`, `cubiomes-sys`, `be-search`, and `server`).
 2. `cargo test --features bds-integration` — **superseded**: the live path is the remote
    Docker-over-SSH driver (`be-verify/remote.rs`), gated behind `--host`. The local
    child-process harness is exercised via `fake_bds` in `cargo test --workspace`
