@@ -4,8 +4,9 @@ Guidance for autonomous agents working in this repository.
 
 ## Remote infrastructure
 
-Minecraft servers run as Docker containers on a remote host (two currently running, plus
-one planned validation container — see table):
+Minecraft servers run as Docker containers on a remote host (two currently running; a
+third, ephemeral 1.21.40 validation container was used once and is now stopped/removed —
+see table):
 
 - **Host:** `ai-assistant-01.longbranch.lwalker.me`
 - **SSH:** `ssh -l luser ai-assistant-01.longbranch.lwalker.me` (key-based; the SSH agent on
@@ -20,18 +21,20 @@ one planned validation container — see table):
 |-------------|----------|---------------------------------|-----------------|-----------|-------------|
 | `mc`        | Java     | `itzg/minecraft-server`          | 26.2 (VANILLA)  | 25565     | `mc-data`   |
 | `mc-bedrock`| Bedrock  | `itzg/minecraft-bedrock-server`  | 1.26.43.1 (BDS) | 25570 tcp | `mc-bedrock-data` |
-| `mc-bedrock-12140` *(planned, not yet created)* | Bedrock | `itzg/minecraft-bedrock-server` | 1.21.40 (BDS) | 25580 tcp (different port) | ephemeral |
+| `mc-bedrock-12140` *(used once, now stopped/removed)* | Bedrock | `itzg/minecraft-bedrock-server` | 1.21.40.03 (BDS) | 25580 tcp | ephemeral (`mc-bedrock-12140-data`) |
 
 > **Resource constraint:** `ai-assistant-01` should run **at most two Minecraft
 > containers at once**. The 1.21.40 validation container is **ephemeral** — start it
 > only for the matched-version biome-validation run (PLAN §4 "1.21.40 validation
 > server"), then stop/remove it when done. It exists to validate cubiomes' ≤1.21 output
-> against a matching Bedrock version; it is not a permanent server.
+> against a matching Bedrock version; it is not a permanent server. Note: the image
+> `VERSION` must be the **4-part** string `1.21.40.03` (bare `1.21.40` 404s), and
+> `ALLOW_CHEATS` must be lowercase `true`.
 
 Volume mount points (on the host): `mc-data` → `/var/lib/docker/volumes/mc-data/_data`,
 `mc-bedrock-data` → `/var/lib/docker/volumes/mc-bedrock-data/_data`. In-container, the
-server data (including `server.properties`) lives under `/data`. The planned 1.21.40
-container should use its own volume (or an ephemeral one) and a distinct name + port.
+server data (including `server.properties`) lives under `/data`. The 1.21.40
+validation container used its own volume and a distinct name + port.
 
 ### Key configuration (current)
 
@@ -41,10 +44,18 @@ container should use its own volume (or an ephemeral one) and a distinct name + 
   - **Structure params: validated.** `be-struct` placement is confirmed **100%** against
     this server (PLAN §7), so treat structure params as confirmed across the
     1.21.x–1.26.43 range.
-  - **Biome params: NOT validated (RED gate).** This version is newer than cubiomes'
-    ≤1.21 support, so cubiomes output cannot be validated here — the biome agreement
-    is **18.2%** (PLAN § "Current status"). Do **not** present biome results as
-    Bedrock-accurate. The 1.21.40 container above is the intended fix.
+  - **Biome params: validated (GREEN).** cubiomes matches the real BDS server's
+    `/locate biome` output at **100%** on both `biome-corpus-1.21.40.json` (captured
+    against this 1.26.43 server) and `biome-corpus-1.21.40.bds.json` (captured against
+    the 1.21.40 validation container). An earlier "18.2% / RED gate" reading was a
+    y/z argument-order bug in `cubiomes-sys/src/bridge.c` (returned `deep_dark` at
+    every surface coordinate), now fixed and regression-tested. Treat biome results as
+    Bedrock-accurate for the surface biomes in the corpus.
+  - **BDS quirks to remember when driving via `send-command`:** strip a leading `/`
+    from commands ("Unknown command: /"), and pre-1.21.100 servers reject the
+    `minecraft:` biome namespace (`locate biome plains` works, `minecraft:plains`
+    syntax-errors). The remote driver (`be-verify/src/remote.rs`) is version-aware via
+    `biome_namespace_required`.
 - **Java:** `enable-rcon=true`, RCON port **25575** (not exposed to the host — reach it
   via `docker exec`/container network), RCON password is in `server.properties`
   (`rcon.password`). Version **26.2** is far newer than cubiomes' ≤1.21 support, so it

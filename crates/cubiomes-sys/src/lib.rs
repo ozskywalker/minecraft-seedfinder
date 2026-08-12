@@ -14,14 +14,14 @@
 //!
 //! ## ⚠️ Honesty note
 //!
-//! `biome_at` returns **Java** biome IDs. Whether those match Bedrock at the same
-//! coordinates is **unvalidated**; that validation is the LevelDB `Data3D` work in
-//! `be-biome` / PLAN §4, which requires real Bedrock world data we do not have here.
+//! `biome_at` returns **Java** biome IDs. Bedrock↔Java parity is validated in
+//! `be-biome`/`be-corpus` against real BDS `/locate biome` output. **As of 2026-08-12
+//! this is GREEN (100%)** for the surface biomes in the corpus (see `be-biome` lib.rs).
 //!
-//! Empirically (Phase 3): cubiomes ≤1.21 gives ~18% agreement vs the live BDS 1.26.43
-//! server's `/locate biome` (see `be-biome` lib.rs). This is expected version drift —
-//! cubiomes caps at 1.21 while the server is 1.26.43. Do not present `biome_at`
-//! results as Bedrock-accurate for any server newer than cubiomes' supported range.
+//! A previous version of this crate's bridge had a y/z argument-order bug that returned
+//! the deep-cave biome (`deep_dark`) at essentially every surface coordinate, making
+//! biome agreement look catastrophically low (~18%). That bug is fixed and
+//! regression-tested here (`surface_biome_is_not_deep_dark`).
 //!
 //! ## Safety
 //!
@@ -52,6 +52,8 @@ extern "C" {
     fn sf_apply_seed(g: *mut Generator, dim: c_int, seed: u64);
     /// `getBiomeAt(g, scale, x, z, 0)` → Java biome id, or -1.
     fn sf_biome_at(g: *const Generator, scale: c_int, x: c_int, z: c_int) -> c_int;
+    /// `getBiomeAt(g, scale, x, z, y)` → Java biome id, or -1. Diagnostic.
+    fn sf_biome_at_y(g: *const Generator, scale: c_int, x: c_int, z: c_int, y: c_int) -> c_int;
     /// The newest MC version constant supported by cubiomes (`MC_1_21`).
     fn sf_mc_latest() -> c_int;
 }
@@ -108,6 +110,15 @@ pub unsafe fn biome_at(g: *const Generator, scale: i32, x: i32, z: i32) -> i32 {
     unsafe { sf_biome_at(g, scale, x, z) }
 }
 
+/// Query the Java biome id at a scaled position with an explicit block `y`
+/// (diagnostic). Use to inspect how the surface biome varies with height.
+///
+/// # Safety
+/// Same requirements as [`biome_at`].
+pub unsafe fn biome_at_y(g: *const Generator, scale: i32, x: i32, z: i32, y: i32) -> i32 {
+    unsafe { sf_biome_at_y(g, scale, x, z, y) }
+}
+
 /// The newest MC version constant cubiomes supports (MC_1_21, = 28).
 pub fn mc_latest() -> i32 {
     unsafe { sf_mc_latest() }
@@ -154,6 +165,51 @@ mod tests {
             let a = biome_at(g, 1, 100, -200);
             let b = biome_at(g, 1, 100, -200);
             assert_eq!(a, b);
+            generator_free(g);
+        }
+    }
+
+    /// The surface biome at a pinned coordinate, for seed 0, is the *surface* biome —
+    /// NOT the cave biome (deep_dark, id 183).
+    ///
+    /// Regression guard for a bridge bug where getBiomeAt's `y` and `z` arguments were
+    /// swapped, causing every surface query to return deep_dark (the deep-cave biome)
+    /// and making Bedrock↔Java biome agreement look catastrophically low. With the
+    /// correct (x, y=63, z) argument order, cubiomes reports the surface biome at each
+    /// of these coordinates, matching the real BDS 1.21.40 `/locate biome` output.
+    #[test]
+    fn surface_biome_is_not_deep_dark() {
+        // (x, z, expected java id): verified against the real BDS 1.21.40 server.
+        // seed 0: plains=1 at (-800,-96), desert=2 at (608,-1632), forest=4 at (-32,-32),
+        // ocean=0 at (-352,-352).
+        let cases: [(i32, i32, i32); 4] = [(-800, -96, 1), (608, -1632, 2), (-32, -32, 4), (-352, -352, 0)];
+        unsafe {
+            let g = generator_new();
+            setup(g, mc_latest());
+            apply_seed(g, dim::OVERWORLD, 0);
+            for (x, z, expected) in cases {
+                let id = biome_at(g, 1, x, z);
+                assert_eq!(
+                    id, expected,
+                    "surface biome at ({x},{z}) should be {expected}, got {id} (deep_dark=183)"
+                );
+            }
+            generator_free(g);
+        }
+    }
+
+    /// Explicit-y diagnostic must respect the (x, y, z) argument order: at any surface
+    /// y the biome is the surface biome, never deep_dark.
+    #[test]
+    fn biome_at_y_respects_argument_order() {
+        unsafe {
+            let g = generator_new();
+            setup(g, mc_latest());
+            apply_seed(g, dim::OVERWORLD, 0);
+            // (608, -1632) is desert (2) at every sampled y.
+            for y in [0, 40, 63, 100, 200] {
+                assert_eq!(biome_at_y(g, 1, 608, -1632, y), 2, "y={y}");
+            }
             generator_free(g);
         }
     }

@@ -58,42 +58,56 @@ fn real_corpus_has_expected_structures() {
     assert!(!structures.contains(&"trial_chambers"));
 }
 
-/// Biome parity gate is **RED** and intentionally pinned at the observed low level.
+/// Biome parity gate — now **GREEN** and pinned at 100%.
 ///
-/// cubiomes (≤1.21) does not match the BDS 1.26.43 server: agreement is ~18% (2/11)
-/// on `fixtures/biome-corpus-1.21.40.json`. This is version drift (cubiomes caps at
-/// 1.21; the server is 1.26.43), not a pipeline bug. This test does NOT assert high
-/// agreement — it pins the honest, currently-failing figure so that if a future
-/// cubiomes update or a supported-version server raises agreement, the change is
-/// noticed and the gate can be flipped green deliberately.
+/// cubiomes (≤1.21 Java) matches the real BDS server's `/locate biome` output at every
+/// observed coordinate, on both captured corpora:
+///
+/// - `fixtures/biome-corpus-1.21.40.json` — captured against the **1.26.43** server.
+/// - `fixtures/biome-corpus-1.21.40.bds.json` — captured against the **1.21.40**
+///   validation container (matched version).
+///
+/// Previously this gate was RED (~18%) because of a y/z argument-order bug in the
+/// cubiomes bridge (`getBiomeAt`), which returned the deep-cave biome (`deep_dark`) at
+/// every surface coordinate. That bug is fixed (see `cubiomes-sys`
+/// `surface_biome_is_not_deep_dark`) and this gate now asserts the correct 100%
+/// agreement so any regression fails loudly.
 #[test]
-fn biome_parity_gate_is_red_and_pinned() {
+fn biome_parity_gate_is_green() {
     use be_biome::{BiomeQuery, CubiomesQuery, builtin_biome_map};
 
     let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .ancestors()
         .nth(2)
         .expect("workspace root is two levels above be-corpus crate");
-    let path = base.join("fixtures/biome-corpus-1.21.40.json");
-    let corpus = Corpus::load(path.to_str().unwrap()).expect("biome corpus fixture loads");
-    assert!(!corpus.biome_samples.is_empty());
 
     let map = builtin_biome_map();
     let mc = cubiomes_sys::mc_latest();
-    let query_id = |seed: u64, x: i64, z: i64| -> Option<u16> {
-        let q = CubiomesQuery::new(mc, seed);
-        q.biome_id_at(x as i32, z as i32)
-    };
     let resolve = |name: &str| -> Option<u16> { map.bedrock_id_for_name(name) };
 
-    let rate = accuracy::biome_overall_rate(&corpus, query_id, resolve)
-        .expect("biome corpus has comparable samples");
+    // Both corpora must agree 100%: the matched-version (1.21.40) one and the
+    // originally-captured (1.26.43) one.
+    for rel in [
+        "fixtures/biome-corpus-1.21.40.json",
+        "fixtures/biome-corpus-1.21.40.bds.json",
+    ] {
+        let path = base.join(rel);
+        let corpus = Corpus::load(path.to_str().unwrap())
+            .unwrap_or_else(|e| panic!("biome corpus fixture {rel} loads: {e}"));
+        assert!(!corpus.biome_samples.is_empty(), "{rel} must not be empty");
 
-    // Pin the honest, currently-red figure (documented in be-biome lib.rs).
-    // When this changes, the gate must be reviewed deliberately.
-    assert!(
-        (rate - 0.1818).abs() < 0.01,
-        "biome agreement changed from pinned 18.2% to {:.1}% — review before flipping gate",
-        rate * 100.0
-    );
+        let query_id = |seed: u64, x: i64, z: i64| -> Option<u16> {
+            let q = CubiomesQuery::new(mc, seed);
+            q.biome_id_at(x as i32, z as i32)
+        };
+
+        let rate = accuracy::biome_overall_rate(&corpus, query_id, resolve)
+            .expect("biome corpus has comparable samples");
+
+        assert!(
+            (rate - 1.0).abs() < 1e-9,
+            "biome agreement for {rel} dropped to {:.1}% (bridge regression?) — expected 100%",
+            rate * 100.0
+        );
+    }
 }

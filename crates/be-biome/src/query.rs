@@ -51,7 +51,8 @@ impl CubiomesQuery {
 
 impl BiomeQuery for CubiomesQuery {
     fn biome_id_at(&self, x: i32, z: i32) -> Option<u16> {
-        // scale 1 = block coordinates.
+        // scale 1 = block coordinates. The bridge samples the SURFACE biome (y=63),
+        // which is what `/locate biome` reports (see cubiomes-sys bridge.c).
         let id = unsafe { biome_at(self.g, 1, x, z) };
         if id < 0 {
             None

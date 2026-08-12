@@ -15,22 +15,26 @@ phase sections below describe design intent and are annotated with completion st
 
 | Phase | Status |
 |---|---|
-| **0** — De-risk / gate | ✅ **Passed (structure side)**. Structure params, salts, distributions and the `/locate` anchor for the *validated* structures are empirically confirmed against the real server (see §7). **Shared-salt behaviour is NOT yet confirmed** (the validated corpus doesn't include the shared-salt scattered set — see §8). The **biome side of the gate is RED** — see below. |
+| **0** — De-risk / gate | ✅ **Passed.** Structure params, salts, distributions and the `/locate` anchor for the *validated* structures are empirically confirmed against the real server (see §7). **Biome gate is now GREEN at 100%** (see below). **Shared-salt behaviour is NOT yet confirmed** (the validated corpus doesn't include the shared-salt scattered set — see §8). |
 | **1** — `be-rng` + `be-struct` | ✅ **Complete.** Streaming MT, full version table, feasibility pre-check. |
 | **2** — `be-verify` + `be-corpus` | ✅ **Complete.** BDS harness, `/locate` parser, corpus generator, accuracy reporting. *Note the harness divergence below.* |
-| **3** — `cubiomes-sys` + `be-biome` | ✅ **Code complete; biome validation RED.** FFI, Bedrock ID map, query/gate/grid all built and green, but cubiomes output is **not validated** against this server version. |
+| **3** — `cubiomes-sys` + `be-biome` | ✅ **Complete; biome validation GREEN.** FFI, Bedrock ID map, query/gate/grid all built and green, and cubiomes output now **validated 100%** against a matched-version 1.21.40 Bedrock server (and the live 1.26.43 server). |
 | **4** — `be-search` | ⬜ **Not started.** |
 | **5** — `server` + `ui` | ⬜ **Not started.** |
 | **6** — Optimization | ⬜ **Not started.** |
 
-**Measured accuracy (from `fixtures/corpus-1.21.40.json` and
-`fixtures/biome-corpus-1.21.40.json`):**
+**Measured accuracy (from `fixtures/corpus-1.21.40.json`,
+`fixtures/biome-corpus-1.21.40.json` and `fixtures/biome-corpus-1.21.40.bds.json`):**
 
 - **Structure positions: 100%** (6 structures × n=5, within 16 blocks; exact match on
   every sample) — reproduced via `be-corpus report`.
-- **Biome agreement: 18.2%** (2/11) — cubiomes (Java, ≤1.21) vs the live BDS 1.26.43
-  server via `be-corpus report-biome`. **This gate is RED and is the single biggest
-  open technical risk.** See "Biome validation — current state" below.
+- **Biome agreement: 100%** — cubiomes matches the real BDS `/locate biome` output at
+  every observed coordinate on both `biome-corpus-1.21.40.json` (captured against the
+  live 1.26.43 server) and `biome-corpus-1.21.40.bds.json` (captured against the 1.21.40
+  validation container). **This gate is now GREEN.** The earlier "18.2% / RED" reading
+  was a y/z argument-order bug in `cubiomes-sys/src/bridge.c` (`getBiomeAt` returned
+  `deep_dark`, the deep-cave biome, at every surface coordinate), not a genuine
+  Java↔Bedrock divergence. See "Biome validation — current state" below.
 
 **Key divergences from the original plan text:**
 1. **Harness is remote Docker-over-SSH, not a local child process.** §4 originally
@@ -45,25 +49,35 @@ phase sections below describe design intent and are annotated with completion st
    practically sound but **provably unverifiable without a 1.21.x server** (flagged
    `UNVERIFIED`). See §4 "1.21.40 validation server" below.
 
-**Biome validation — current state (the decisive open decision):**
+**Biome validation — current state (RESOLVED, gate GREEN):**
 - cubiomes caps at **`MC_1_21`** (`MC_NEWEST`); the vendored copy already has the newest
-  constants. The live server is **1.26.43** — a five-version gap in which Bedrock biome
-  generation changed. So the 18.2% figure **conflates version drift with Java↔Bedrock
-  edition parity** and cannot separate them at 1.26.43.
+  constants. The live server was **1.26.43** — a five-version gap in which Bedrock biome
+  generation could have changed, which made the earlier low agreement ambiguous (version
+  drift vs Java↔Bedrock parity).
 - **cubiomes is retained.** Research (2026-08-12) found no newer cubiomes and **no
   permissive (MIT/BSD) Bedrock-native biome generator to swap in** — every Bedrock-native
   option is unlicensed or GPLv3, and `Earthcomputer/bedrockified` is a stale (1.13.1)
   Java *mod*, not a biome-ID library. cubiomes is the only MIT, fast, per-seed biome
   source.
-- **The decisive experiment** is to stand up a **1.21.40 Bedrock server** (matching both
-  the v1 target and cubiomes' max) and re-run `be-corpus generate-biome` + `report-biome`
-  against it. High agreement ⇒ version drift was the cause and cubiomes is fine for the
-  v1 target. Low agreement ⇒ genuine Java↔Bedrock divergence (a real §8 risk realized).
-  Until then, biome results must not be presented as Bedrock-accurate.
+- **The decisive experiment was run (2026-08-12).** Stood up an ephemeral **1.21.40.03
+  Bedrock server** (matching both the v1 target and cubiomes' max) via
+  `be-corpus generate-biome` + `report-biome`. Result: **100% agreement** on the new
+  matched-version corpus (`biome-corpus-1.21.40.bds.json`). Re-checking the *original*
+  1.26.43 corpus also gave **100%** once the bridge bug was fixed.
+- **Root cause of the earlier RED gate: our own bridge bug, not version drift and not
+  Java↔Bedrock divergence.** `cubiomes-sys/src/bridge.c` called
+  `getBiomeAt(g, scale, x, z, y)`, but cubiomes' signature is `(g, scale, x, y, z)` —
+  y/z were swapped, so every surface query returned `deep_dark` (the deep-cave biome).
+  Fixed to sample at y=63 (sea level) and regression-tested
+  (`cubiomes_sys::surface_biome_is_not_deep_dark`; `be-corpus::biome_parity_gate_is_green`).
+- **Conclusion:** cubiomes is validated against real Bedrock (1.21.40 matched version)
+  at **100%** for the surface biomes in the corpus. Biome results may be presented as
+  Bedrock-accurate for those biomes. The ephemeral 1.21.40 container was removed after
+  the run (per the at-most-two-containers rule).
 
-**Next work:** Phase 4 (`be-search`). Before it is trusted, the 1.21.40 biome-validation
-server should be stood up (§4) so the Phase B biome gates are not built on unvalidated
-output.
+**Next work:** Phase 4 (`be-search`). The 1.21.40 biome-validation server was stood up
+(§4), the biome gate is GREEN at 100%, and the ephemeral container removed — Phase B
+biome gates can now be built on validated output.
 
 ---
 
@@ -110,7 +124,7 @@ These were decided with the project owner. Do not relitigate them without asking
 | Decision | Choice | Status |
 |---|---|---|
 | **Search origin** | World coordinate **(0,0)**. Bedrock's true spawn is a separate, unreliable RE problem (algorithm changed in 1.21.60; every existing tool admits inaccuracy). Real spawn is always near 0,0. | ✅ Decided; not yet exercised (spawn not needed in v1). |
-| **Biome filtering** | **Both** modes: per-structure biome gates, and standalone "biome present within radius". | ✅ Decided; gates/grids built (§3 Phase 3), biome truth **RED** (§8). |
+| **Biome filtering** | **Both** modes: per-structure biome gates, and standalone "biome present within radius". | ✅ Decided; gates/grids built (§3 Phase 3), biome truth **GREEN** (§ "Current status"). |
 | **Version support** | **Pluggable version tables as data.** v1 populates and validates **1.21.x** only. | ✅ Implemented (`versions/*.json`). Validation target set to a dedicated **1.21.40** server (§4). |
 | **Stack** | **Rust core + embedded local web UI.** Single `.exe`, axum REST+SSE, static canvas UI, opens default browser. | ⬜ Phase 5 not started. |
 | **C interop** | **Hybrid** — reimplement structure math in pure Rust; FFI to cubiomes (MIT) for biomes. | ✅ Implemented (`be-struct` pure Rust; `cubiomes-sys` + `be-biome`). |
@@ -497,6 +511,14 @@ permanent server. `be-corpus generate-biome`/`report-biome` then targets that co
 via its `--container`/port, and the resulting biome corpus is version-labeled honestly
 as captured (see version-provenance note below).
 
+> **RESOLVED 2026-08-12.** This experiment was run: an ephemeral **1.21.40.03** container
+> (own volume `mc-bedrock-12140-data`, host port 25580, `ALLOW_CHEATS=true`) captured
+> `fixtures/biome-corpus-1.21.40.bds.json`, giving **100%** agreement — and the original
+> 1.26.43 corpus also gives **100%** once the bridge y/z bug (§ "Current status") is
+> fixed. The container and its volume were removed afterward, returning the host to its
+> two permanent servers. Note the image `VERSION` must be the 4-part `1.21.40.03`
+> (bare `1.21.40` 404s) and `ALLOW_CHEATS` must be lowercase `true`.
+
 Landmines to design around:
 
 - **Build the stdout parser from captured real output, not from docs.** Message
@@ -645,8 +667,8 @@ streaming MT's tiny working set means per-thread state is a handful of words, no
 
 | Risk | Mitigation |
 |---|---|
-| Post-1.18 Bedrock↔Java biome parity is **empirically observed, not proven** — no source-level decompilation confirms identical noise parameters, and Mojang's own framing was "not 100% there yet, but close." | This is precisely why the measured accuracy figure is load-bearing rather than decorative. Validate against LevelDB grids; surface the number. |
-| **Biome gate is RED at 1.26.43** — cubiomes (≤1.21 Java) agrees with the live server only 18.2%, conflating version drift with edition parity. | **cubiomes retained** (no newer cubiomes; no permissive Bedrock-native alternative exists — research 2026-08-12). Stand up a **1.21.40** server (matching the v1 target and cubiomes' max) and re-run `generate-biome`/`report-biome` to separate the two variables. Until a matched-version test passes, do not present biome results as Bedrock-accurate. |
+| Post-1.18 Bedrock↔Java biome parity is **empirically observed, not proven** — no source-level decompilation confirms identical noise parameters, and Mojang's own framing was "not 100% there yet, but close." | This is precisely why the measured accuracy figure is load-bearing rather than decorative. **RESOLVED 2026-08-12 for the corpus's surface biomes: cubiomes matches the real BDS server 100% on both a matched-version (1.21.40) and a 1.26.43 corpus.** The earlier RED reading was a bridge bug, not a parity gap. Remaining scope: biomes/biomes beyond the corpus. Validate against LevelDB grids; surface the number. |
+| **Biome gate is RED at 1.26.43** — cubiomes (≤1.21 Java) agrees with the live server only 18.2%, conflating version drift with edition parity. | **RESOLVED 2026-08-12.** The 18.2% figure was caused by a y/z argument-order bug in `cubiomes-sys/src/bridge.c`, not version drift or edition parity. Fixed (sample at y=63) and regression-tested. The matched-version **1.21.40.03** server was stood up, `generate-biome`/`report-biome` re-run → **100%** on both corpora; ephemeral container then removed. Biome results for the corpus's surface biomes may be presented as Bedrock-accurate. |
 | Temples can fail to generate on unsuitable terrain in 1.18+ (§2.8) | Flag affected structures as lower-confidence in the UI; BDS verification catches individual misses. |
 | Shared-salt finding is only medium-confidence | **Still open.** The validated corpus structures (village, monument, city, outpost, shipwreck, treasure, portal) are **not** the shared-salt scattered set (desert pyramid / igloo / jungle pyramid / swamp hut), so the 100% agreement does **not** confirm the shared-slot behaviour. Phase 4's shared-slot feasibility test remains the gate. |
 | **Complex relational queries have no completeness guarantee** — "no results" may mean "none exist" or "not found yet", and users will read it as the former | Display the active mode and elapsed search space prominently. Never render an empty result set as "no such seed exists". |
@@ -654,7 +676,7 @@ streaming MT's tiny working set means per-thread state is a handful of words, no
 | Expressive queries invite unsatisfiable ones | Static feasibility analysis with explained reasons (§3.1); live feedback in the route builder as constraints are edited, not just at submit. |
 | Bedrock updates silently change parameters | Version tables are data; corpus regression fails loudly. |
 | BDS stdout format drift | Parser built from captured output, version-gated, with fixtures. |
-| **Corpus version label (`1.21.40`) captured against `1.26.43`** — `UNVERIFIED` provenance | Structure params agree 100% across the range (practically sound), but a true 1.21-specific match is unprovable without a 1.21 server. The 1.21.40 validation server (see above) both clears the biome gate and re-confirms the structure label against the correct version. |
+| **Corpus version label (`1.21.40`) captured against `1.26.43`** — `UNVERIFIED` provenance | Structure params agree 100% across the range (practically sound), and the 1.21.40 validation server (see above) was run: it produced the matched-version biome corpus `biome-corpus-1.21.40.bds.json` (100%) and re-confirmed the biome gate against the correct version. |
 
 ---
 

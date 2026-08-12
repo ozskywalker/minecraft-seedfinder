@@ -23,7 +23,7 @@ use be_corpus::corpus::BlockPos;
 use be_corpus::{BiomeSample, Corpus, Sample, Version, accuracy};
 use be_verify::{LocateResult, RemoteBedrock, RemoteBedrockConfig};
 
-const USAGE: &str = "usage:\n  be-corpus report <corpus.json> [tolerance]\n  be-corpus generate --version <v> --seeds <n> --host <host> [--user <user>] [--container <name>] [--out <corpus.json>]\n  be-corpus generate-biome --seeds <n> --host <host> [--user <user>] [--biomes <a,b,c>] [--out <corpus.json>]\n  be-corpus report-biome <corpus.json>";
+const USAGE: &str = "usage:\n  be-corpus report <corpus.json> [tolerance]\n  be-corpus generate --version <v> --seeds <n> --host <host> [--user <user>] [--container <name>] [--out <corpus.json>]\n  be-corpus generate-biome --seeds <n> --host <host> [--user <user>] [--biomes <a,b,c>] [--no-biome-namespace] [--container <name>] [--out <corpus.json>]\n  be-corpus report-biome <corpus.json>";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
@@ -189,6 +189,11 @@ fn cmd_generate_biome(args: &[String]) -> ExitCode {
     let host = parse_kv(args, "--host");
     let user = parse_kv(args, "--user").map(String::as_str).unwrap_or("luser");
     let container = parse_kv(args, "--container");
+    // Bedrock >= 1.21.100 requires the minecraft: biome namespace; older versions
+    // (e.g. the 1.21.40 validation container) must send bare ids. Default to the
+    // namespaced form (matches the live 1.26.43 server); pass --no-biome-namespace
+    // for pre-1.21.100 servers.
+    let biome_namespace = !args.iter().any(|a| a == "--no-biome-namespace");
     let out = parse_kv(args, "--out");
 
     let Some(seeds) = seeds else {
@@ -216,8 +221,11 @@ fn cmd_generate_biome(args: &[String]) -> ExitCode {
     if let Some(c) = container {
         cfg.container = c.clone();
     }
+    cfg.biome_namespace_required = biome_namespace;
     cfg.startup_wait = Duration::from_secs(120);
-    cfg.response_wait = Duration::from_millis(1500);
+    // Biome locate responses must flush to `docker logs` before we scrape. 1.5s was
+    // too short (matched stale lines from the prior world/seed); 4s is reliable.
+    cfg.response_wait = Duration::from_millis(4000);
     let bds = RemoteBedrock::new(cfg);
 
     let mut corpus = Corpus::new();

@@ -12,27 +12,25 @@
 //! ## ⚠️ Honesty constraint
 //!
 //! [`cubiomes_query::CubiomesQuery`] returns **Java** biome IDs. Bedrock↔Java biome
-//! parity is **empirically observed but not proven** (PLAN §8), and the agreement
-//! layer ([`grid`]) is the mechanism that would validate it against real LevelDB
-//! `Data3D` grids — data we do not have in this environment. Do not present biome
-//! results as Bedrock-accurate until that gate is cleared.
+//! parity is validated by the agreement layer ([`grid`]) against real BDS `/locate
+//! biome` output. **As of 2026-08-12 this gate is GREEN:** cubiomes matches the real
+//! Bedrock server (both 1.21.40 and 1.26.43) at **100%** for the surface biomes in the
+//! corpus, after fixing a y/z argument-order bug in the cubiomes bridge (see
+//! `cubiomes-sys`). See PLAN § "Current status".
 //!
-//! ## ⚠️ Empirically: cubiomes does NOT match the live BDS 1.26.43 server
+//! ## ✅ Empirically: cubiomes matches the live BDS servers
 //!
-//! Phase 3 validation attempted to compare cubiomes' predicted nearest-biome position
-//! against the real server's `/locate biome` output (fixture
-//! `fixtures/biome-corpus-1.21.40.json`, 11 samples, seeds 0..2). Agreement was
-//! **18%** (2/11). cubiomes reports `deep_dark` where the server reports `desert` and
-//! `ocean`, and finds *no* desert within 3000 blocks for seed 0 where the server finds
-//! one at (608, -1632).
+//! Phase 3 validation compares cubiomes' predicted biome at each coordinate where the
+//! real server's `/locate biome` reported a biome. With the bridge fixed, agreement is
+//! **100%** on both `fixtures/biome-corpus-1.21.40.json` (captured against 1.26.43)
+//! and `fixtures/biome-corpus-1.21.40.bds.json` (captured against the 1.21.40
+//! validation container). Biome results may be presented as Bedrock-accurate for the
+//! surface biomes in this corpus.
 //!
-//! This is expected and unavoidable with the available server: cubiomes caps at
-//! **1.21** (`MC_1_21`), but the live server is **1.26.43** — a five-version gap in
-//! which Bedrock biome generation changed. cubiomes therefore **cannot validate
-//! Bedrock biome output for this server version**. This gate stays RED; biome results
-//! must not be presented as Bedrock-accurate until either (a) a server on a
-//! cubiomes-supported version is available, or (b) cubiomes is updated. See the §8
-//! open risk.
+//! Earlier "18.2% agreement" / RED-gate claims were an artifact of a bug in
+//! `cubiomes-sys/src/bridge.c`: `getBiomeAt`'s `y` and `z` arguments were swapped, so
+//! every surface query returned `deep_dark` (the deep-cave biome). This is fixed and
+//! regression-tested.
 
 pub mod gate;
 pub mod grid;

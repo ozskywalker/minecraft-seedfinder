@@ -1,0 +1,113 @@
+{
+  "samples": [],
+  "biome_samples": [
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "biome": "plains",
+      "observed": {
+        "x": -800,
+        "z": -96
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "biome": "desert",
+      "observed": {
+        "x": 608,
+        "z": -1632
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "biome": "forest",
+      "observed": {
+        "x": -32,
+        "z": -32
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "biome": "ocean",
+      "observed": {
+        "x": -352,
+        "z": -352
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "biome": "plains",
+      "observed": {
+        "x": -480,
+        "z": -480
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "biome": "forest",
+      "observed": {
+        "x": -288,
+        "z": -736
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "biome": "plains",
+      "observed": {
+        "x": -224,
+        "z": 32
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "biome": "desert",
+      "observed": {
+        "x": 3360,
+        "z": 864
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "biome": "ocean",
+      "observed": {
+        "x": -1184,
+        "z": -1696
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "biome": "plains",
+      "observed": {
+        "x": -736,
+        "z": -736
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "biome": "desert",
+      "observed": {
+        "x": -608,
+        "z": -1504
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "biome": "ocean",
+      "observed": {
+        "x": -32,
+        "z": -672
+      }
+    }
+  ]
+}

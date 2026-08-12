@@ -79,6 +79,13 @@ pub struct RemoteBedrockConfig {
     pub startup_wait: Duration,
     /// How long to wait after `send-command` before scraping `docker logs`.
     pub response_wait: Duration,
+    /// Whether `/locate biome` ids must carry the `minecraft:` namespace.
+    ///
+    /// Bedrock requires the namespace since **1.21.100** (PLAN §4). Servers at or
+    /// above that version set this to `true`; older versions (e.g. the 1.21.40
+    /// validation container) must set it to `false` or every biome locate fails with
+    /// a syntax error.
+    pub biome_namespace_required: bool,
 }
 
 /// Boxed [`RemoteRunner`] so the config is object-safe and clonable.
@@ -86,6 +93,9 @@ pub type RemoteRunnerBox = Box<dyn RemoteRunner + Send + Sync>;
 
 impl RemoteBedrockConfig {
     /// Config for the project's live container (`mc-bedrock` on the AGENTS.md host).
+    ///
+    /// The live server runs BDS 1.26.43 (>= 1.21.100), so the biome namespace is
+    /// required by default.
     pub fn live(host: &str, user: &str) -> Self {
         RemoteBedrockConfig {
             runner: Box::new(SshRunner::new(host, user)),
@@ -93,6 +103,7 @@ impl RemoteBedrockConfig {
             world_dir: "Bedrock level".to_string(),
             startup_wait: Duration::from_secs(60),
             response_wait: Duration::from_millis(1200),
+            biome_namespace_required: true,
         }
     }
 }
@@ -116,9 +127,25 @@ impl RemoteBedrock {
         self.cfg.runner.run(&remote)
     }
 
-    fn docker_logs_tail(&self, lines: usize) -> std::io::Result<String> {
+    /// Current UTC time on the remote host as an RFC3339 string, for `docker logs
+    /// --since`. We use the *host* clock (same machine as the containers), so this is
+    /// comparable to the container log timestamps.
+    fn remote_now_rfc3339(&self) -> std::io::Result<String> {
+        let remote = "date -u +%Y-%m-%dT%H:%M:%SZ";
+        let out = self.cfg.runner.run(remote)?;
+        Ok(out.trim().to_string())
+    }
+
+    /// Fetch log lines emitted since `since` (an RFC3339 UTC timestamp), newest last.
+    ///
+    /// Unlike [`docker_logs_tail`], this is **not** affected by lines that predate the
+    /// timestamp — which is what makes it correct across container restarts, where
+    /// `docker logs` accumulates output from prior worlds/seeds. See the stale-response
+    /// bug this fixes: "newest matching line in the tail" was returning a previous
+    /// world's `/locate` result.
+    fn docker_logs_since(&self, since: &str, lines: usize) -> std::io::Result<String> {
         let c = &self.cfg.container;
-        let remote = format!("sudo docker logs --tail {lines} {c}");
+        let remote = format!("sudo docker logs --since {since} --tail {lines} {c}");
         self.cfg.runner.run(&remote)
     }
 
@@ -176,16 +203,20 @@ impl RemoteBedrock {
     }
 
     /// Poll until the server responds to a command (or timeout).
+    ///
+    /// Uses a fresh `--since` log window (not the persistent tail), because the
+    /// accumulated container log already contains "nearest" lines from prior
+    /// worlds/seeds — reading the tail would falsely report "ready" before the
+    /// freshly-restarted server has actually come up.
     pub fn wait_until_ready(&self) -> std::io::Result<()> {
+        let since = self.remote_now_rfc3339()?;
         let deadline = Instant::now() + self.cfg.startup_wait;
         loop {
             // Probe that the container is up and send-command runs, then check the log
-            // responds to a locate.
+            // responds to a locate within the fresh window.
             if self.docker_exec("true").is_ok() {
-                // Confirm the server actually accepted a command by checking the
-                // log grows. Send a locate and look for a response line.
                 let _ = self.send_locate_raw("village");
-                let logs = self.docker_logs_tail(30).unwrap_or_default();
+                let logs = self.docker_logs_since(&since, 30).unwrap_or_default();
                 if logs.contains("nearest") || logs.contains("No valid structure") {
                     return Ok(());
                 }
@@ -207,10 +238,19 @@ impl RemoteBedrock {
         Ok(())
     }
 
-    /// Send a `/locate biome` command (requires the `minecraft:` namespace on
-    /// 1.21.100+, PLAN §4) via `send-command`.
+    /// Send a `/locate biome` command via `send-command`.
+    ///
+    /// The namespace is applied per [`RemoteBedrockConfig::biome_namespace_required`]
+    /// (required since Bedrock 1.21.100, PLAN §4), so this driver works against both
+    /// pre- and post-1.21.100 servers. `send-command` passes the whole argument to the
+    /// server as one token, so the leading `/` must be stripped (the server rejects a
+    /// bare `/`).
     fn send_locate_biome_raw(&self, name: &str) -> std::io::Result<()> {
-        let inner = format!("send-command \"locate biome minecraft:{name}\"");
+        let cmd = crate::locate::LocateCommand::biome(name)
+            .render(self.cfg.biome_namespace_required)
+            .trim_start_matches('/')
+            .to_string();
+        let inner = format!("send-command \"{cmd}\"");
         self.docker_exec(&inner)?;
         Ok(())
     }
@@ -219,67 +259,74 @@ impl RemoteBedrock {
     ///
     /// Bedrock returns a real y for biomes (`at block x, y, z`), so the result carries
     /// `y: Some(...)`. Returns `None` if no response line was found.
+    ///
+    /// The response is read from `docker logs` only for lines emitted **after** the
+    /// command was sent (via a host timestamp), so a stale response from a previous
+    /// world/seed in the accumulated container log is never matched. Polls the
+    /// `--since` window until a response appears (or [`RemoteBedrockConfig::response_wait`]
+    /// elapses), because the first locate after a world boot can be slow to flush while
+    /// chunks generate — a single fixed sleep misses it.
     pub fn locate_biome(&self, name: &str) -> std::io::Result<Option<LocateResult>> {
+        // Match the biome name as it appears in the response line. On >= 1.21.100 the
+        // server echoes the namespaced id (`minecraft:plains`); on older versions it
+        // echoes the bare id (`plains`). Use whichever form we sent.
+        let marker = if self.cfg.biome_namespace_required {
+            format!("minecraft:{name}")
+        } else {
+            name.to_string()
+        };
+        let not_found_marker = "Cannot locate the requested biome";
         self.send_locate_biome_raw(name)?;
-        std::thread::sleep(self.cfg.response_wait);
-
-        let after = self.docker_logs_tail(500)?;
-        let marker = format!("minecraft:{name}");
-
-        let mut found_lines: Vec<&str> = after
-            .lines()
-            .filter(|l| l.contains(&marker))
-            .collect();
-
-        if found_lines.is_empty() {
-            if after.contains("Cannot locate the requested biome") {
-                return Ok(Some(LocateResult::NotFound));
-            }
-            return Ok(None);
-        }
-
-        let line = found_lines.pop().unwrap_or_default();
-        match parse_locate_output(line) {
-            LocateResult::Found { x, z, y } => Ok(Some(LocateResult::Found { x, z, y })),
-            _ => Ok(None),
-        }
+        self.poll_locate(&marker, not_found_marker)
     }
-    /// Locate a structure: send the command, wait, scrape the response from logs.
+
+    /// Locate a structure: send the command, poll the `--since` log window for the
+    /// response.
     ///
     /// The locate output always contains the structure's namespaced id (e.g.
-    /// `minecraft:village`), so we scan the recent log tail for the newest line that
-    /// references that id. Returns `Some(Found)` on a coordinate response, `Some(...)`
-    /// for not-found is represented by scanning for the failure marker too. Returns
-    /// `None` only if no response line was found in the tail.
+    /// `minecraft:village`), so we scan the log for lines emitted **after** the command
+    /// (via a host timestamp) that reference that id. Returns `Some(Found)` on a
+    /// coordinate response, `Some(...)` for not-found is represented by scanning for
+    /// the failure marker too. Returns `None` only if no response line was found.
     pub fn locate(&self, id: &str) -> std::io::Result<Option<LocateResult>> {
-        self.send_locate_raw(id)?;
-        std::thread::sleep(self.cfg.response_wait);
-
-        let after = self.docker_logs_tail(500)?;
-        // Namespaced id appears in the response line (e.g. "minecraft:village").
         let marker = format!("minecraft:{id}");
+        self.send_locate_raw(id)?;
+        self.poll_locate(&marker, "No valid structure found")
+    }
 
-        // Collect all lines in the tail that reference this structure, newest last.
-        let mut found_lines: Vec<&str> = after
-            .lines()
-            .filter(|l| l.contains(&marker))
-            .collect();
+    /// Send a `/locate` and poll the `--since` window until a response line mentioning
+    /// `marker` appears, or until `response_wait` elapses.
+    ///
+    /// `not_found_marker` is a substring signalling a "not found" result (which also
+    /// terminates polling). Returns `Ok(None)` only if neither marker appeared within
+    /// the window (no response yet / not flushed).
+    fn poll_locate(&self, marker: &str, not_found_marker: &str) -> std::io::Result<Option<LocateResult>> {
+        let since = self.remote_now_rfc3339()?;
+        let deadline = Instant::now() + self.cfg.response_wait;
+        loop {
+            let last_after = self.docker_logs_since(&since, 200)?;
+            let mut found_lines: Vec<&str> = last_after
+                .lines()
+                .filter(|l| l.contains(marker))
+                .collect();
 
-        // If no coordinate line references the id, check for the not-found marker.
-        if found_lines.is_empty() {
-            if after.contains("No valid structure found") {
+            if let Some(line) = found_lines.pop() {
+                if let LocateResult::Found { x, z, y } = parse_locate_output(line) {
+                    return Ok(Some(LocateResult::Found { x, z, y }));
+                }
+                // A marker line that didn't parse is not a coordinate response; keep
+                // polling unless it is the failure marker, handled below.
+            }
+            if last_after.contains(not_found_marker) {
                 return Ok(Some(LocateResult::NotFound));
             }
-            return Ok(None);
-        }
-
-        // Parse the newest reference to this structure.
-        let line = found_lines.pop().unwrap_or_default();
-        match parse_locate_output(line) {
-            LocateResult::Found { x, z, y } => Ok(Some(LocateResult::Found { x, z, y })),
-            _ => Ok(None),
+            if Instant::now() >= deadline {
+                return Ok(None);
+            }
+            std::thread::sleep(Duration::from_millis(500));
         }
     }
+
 }
 
 #[cfg(test)]
@@ -327,7 +374,46 @@ mod tests {
             world_dir: "Bedrock level".into(),
             startup_wait: Duration::from_millis(1),
             response_wait: Duration::from_millis(1),
+            biome_namespace_required: true,
         }
+    }
+
+    /// A fake runner that returns the given log tail and records issued commands.
+    fn cfg_with_logs(logs_tail: &str) -> (RemoteBedrock, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+        let (runner, commands) = FakeRunner::new(logs_tail);
+        (RemoteBedrock::new(cfg(runner)), commands)
+    }
+
+    /// Pre-1.21.100 servers must send the bare biome id (no `minecraft:` namespace).
+    #[test]
+    fn locate_biome_bare_id_on_old_version() {
+        let (mut b, commands) = cfg_with_logs(
+            "[2026-08-12 13:00:00 INFO] The nearest plains is at block -32, 71, -864 (864 blocks away)",
+        );
+        b.cfg.biome_namespace_required = false;
+        let res = b.locate_biome("plains").unwrap();
+        assert_eq!(res, Some(LocateResult::Found { x: -32, z: -864, y: Some(71) }));
+        let cmds = commands.lock().unwrap().clone();
+        assert!(
+            cmds.iter().any(|c| c.contains("locate biome plains") && !c.contains("minecraft:")),
+            "expected a bare biome locate command, got {cmds:?}"
+        );
+    }
+
+    /// >= 1.21.100 servers must send the namespaced biome id.
+    #[test]
+    fn locate_biome_namespaced_id_on_new_version() {
+        let (b, commands) = cfg_with_logs(
+            "[2026-08-12 13:00:00 INFO] The nearest minecraft:plains is at block -480, 63, -864 (988 blocks away)",
+        );
+        // biome_namespace_required defaults to true in cfg().
+        let res = b.locate_biome("plains").unwrap();
+        assert_eq!(res, Some(LocateResult::Found { x: -480, z: -864, y: Some(63) }));
+        let cmds = commands.lock().unwrap().clone();
+        assert!(
+            cmds.iter().any(|c| c.contains("locate biome minecraft:plains")),
+            "expected a namespaced biome locate command, got {cmds:?}"
+        );
     }
 
     #[test]
