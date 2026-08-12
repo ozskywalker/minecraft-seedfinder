@@ -135,6 +135,28 @@ impl<'a> Engine<'a> {
             .collect()
     }
 
+    /// Streaming sweep over `[start, end)`: invoke `visit` once per verified
+    /// structural candidate as it is found, without collecting into a `Vec`. This is
+    /// the seam the server uses to stream results over SSE as they are produced
+    /// (§3.1 "results go to the UI over SSE as found — never block on a completed
+    /// sweep").
+    ///
+    /// Sequential and deterministic; the callback is never invoked from a parallel
+    /// thread, so callers may safely accumulate into a non-threadsafe structure.
+    pub fn search_range_visit<F>(&self, start: u32, end: u32, mut visit: F)
+    where
+        F: FnMut(&Candidate),
+    {
+        for low in start..end {
+            let seed = low as u64;
+            if let Some(cand) = self.evaluate_seed(seed) {
+                if self.verify(&cand) {
+                    visit(&cand);
+                }
+            }
+        }
+    }
+
     /// Evaluate a single seed's structural binding, in the planned join order.
     /// Returns the bound positions if every variable binds, else `None`.
     pub fn evaluate_seed(&self, seed: u64) -> Option<Candidate> {

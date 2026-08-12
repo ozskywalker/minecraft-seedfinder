@@ -47,6 +47,16 @@ impl CubiomesQuery {
             CubiomesQuery { g }
         }
     }
+
+    /// Re-seed this generator with a different world seed, reusing the same
+    /// `Generator` allocation. This is the fast path for Phase B: sweeping many high
+    /// 32-bit halves for one structural candidate without allocating a generator per
+    /// seed.
+    pub fn set_seed(&mut self, seed: u64) {
+        unsafe {
+            apply_seed(self.g, cubiomes_sys::dim::OVERWORLD, seed);
+        }
+    }
 }
 
 impl BiomeQuery for CubiomesQuery {

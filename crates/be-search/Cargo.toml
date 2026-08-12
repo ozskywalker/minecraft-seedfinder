@@ -7,6 +7,11 @@ license.workspace = true
 [dependencies]
 be-struct = { path = "../be-struct" }
 be-biome = { path = "../be-biome" }
+cubiomes-sys = { path = "../cubiomes-sys" }
 serde = { workspace = true }
 serde_json = { workspace = true }
 rayon = "1"
+
+[[bin]]
+name = "be-search"
+path = "src/main.rs"
