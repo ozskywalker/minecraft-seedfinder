@@ -83,15 +83,52 @@ fn default_true() -> bool {
 /// env var (default `ui/dist` relative to the current working directory). If the
 /// directory is absent, the index route falls back to a placeholder page.
 pub fn app(state: AppState) -> Router {
-    let ui_dir = std::env::var("SEEDFINDER_UI_DIR").unwrap_or_else(|_| "ui/dist".to_string());
+    // Default UI dir is anchored to the crate so it works regardless of cwd (tests run
+    // from crates/server; the binary may be run from anywhere). Overridable via env.
+    let ui_dir = std::env::var("SEEDFINDER_UI_DIR").unwrap_or_else(|_| {
+        concat!(env!("CARGO_MANIFEST_DIR"), "/../../ui/dist").to_string()
+    });
     let static_service = tower_http::services::ServeDir::new(&ui_dir)
-        .not_found_service(tower_http::services::ServeFile::new("crates/server/src/index_placeholder.html"));
+        .not_found_service(tower_http::services::ServeFile::new(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/src/index_placeholder.html"
+        )));
     Router::new()
         .route("/api/search", post(search_handler))
         .route("/api/tile/{seed}/{tx}/{tz}/{lod}", get(tile_handler))
-        .route("/", get(index_handler))
+        .route("/api/catalog", get(catalog_handler))
+        // Serve the built UI from ui/dist (ServeDir serves index.html for `/`). If the
+        // UI isn't built, requests fall through to the placeholder page.
         .fallback_service(static_service)
         .with_state(state)
+}
+
+/// The structure catalog: the authoritative list of structures (keys + biome gates +
+/// shared-slot partners) from the embedded version table. The UI uses this to populate
+/// the route-builder dropdowns without duplicating version data in JS.
+async fn catalog_handler() -> Response {
+    let v = be_struct::Version::builtin_1_21_40();
+    let structures: Vec<serde_json::Value> = v
+        .structures
+        .iter()
+        .map(|(key, s)| {
+            serde_json::json!({
+                "key": key,
+                "biomes": s.biomes,
+                "shares_slot_with": s.shares_slot_with,
+            })
+        })
+        .collect();
+    let body = serde_json::json!({
+        "version": v.version,
+        "seed_bits": v.seed_bits,
+        "structures": structures,
+    });
+    (
+        [(header::CONTENT_TYPE, "application/json")],
+        body.to_string(),
+    )
+        .into_response()
 }
 
 /// The search endpoint: parse the job, then stream events over SSE.
@@ -184,15 +221,6 @@ async fn tile_handler(
         .into_response()
 }
 
-/// Serve the index page (placeholder if no built UI is present).
-async fn index_handler() -> Response {
-    (
-        [(header::CONTENT_TYPE, "text/html; charset=utf-8")],
-        include_str!("index_placeholder.html"),
-    )
-        .into_response()
-}
-
 /// Run the server on `addr`, returning when it's ready (for tests) — otherwise the
 /// caller awaits forever.
 pub async fn serve(addr: SocketAddr, state: AppState) -> std::io::Result<()> {
@@ -268,6 +296,55 @@ mod tests {
         let ct = resp.headers().get("content-type").unwrap().to_str().unwrap();
         assert!(ct.contains("image/png"), "content-type: {ct}");
         let _ = Duration::new(0, 0);
+    }
+
+    #[tokio::test]
+    async fn index_serves_html() {
+        use axum::body::Body;
+        use axum::http::Request;
+        use tower::ServiceExt;
+
+        let state = AppState::default();
+        let app = app(state);
+        let req = Request::builder().uri("/").body(Body::empty()).unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let ct = resp.headers().get("content-type").unwrap().to_str().unwrap();
+        assert!(ct.contains("text/html"), "content-type: {ct}");
+    }
+
+    #[tokio::test]
+    async fn catalog_endpoint_lists_structures() {
+        use axum::body::Body;
+        use axum::http::Request;
+        use tower::ServiceExt;
+
+        let state = AppState::default();
+        let app = app(state);
+        let req = Request::builder()
+            .uri("/api/catalog")
+            .body(Body::empty())
+            .unwrap();
+        let resp = app.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let ct = resp.headers().get("content-type").unwrap().to_str().unwrap();
+        assert!(ct.contains("application/json"), "content-type: {ct}");
+        let body = resp.into_body();
+        let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();
+        let json: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        let structures = json["structures"].as_array().unwrap();
+        let keys: Vec<&str> = structures
+            .iter()
+            .map(|s| s["key"].as_str().unwrap())
+            .collect();
+        assert!(
+            keys.contains(&"village"),
+            "catalog must list village, got {keys:?}"
+        );
+        assert!(
+            keys.contains(&"desert_pyramid"),
+            "catalog must list desert_pyramid, got {keys:?}"
+        );
     }
 
     #[tokio::test]

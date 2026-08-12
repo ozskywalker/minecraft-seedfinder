@@ -7,8 +7,10 @@ license.workspace = true
 [dependencies]
 be-search = { path = "../be-search" }
 be-biome = { path = "../be-biome" }
+be-struct = { path = "../be-struct" }
 cubiomes-sys = { path = "../cubiomes-sys" }
 serde = { workspace = true }
+serde_json = { workspace = true }
 axum = "0.8"
 tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.6", features = ["fs", "cors"] }
