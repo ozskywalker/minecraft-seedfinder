@@ -1,0 +1,10 @@
+[package]
+name = "be-struct"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+be-rng = { path = "../be-rng" }
+serde = { workspace = true }
+serde_json = { workspace = true }

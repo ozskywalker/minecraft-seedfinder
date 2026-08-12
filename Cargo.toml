@@ -1,0 +1,20 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/be-rng",
+    "crates/be-struct",
+    "crates/be-verify",
+    "crates/be-corpus",
+    "crates/cubiomes-sys",
+    "crates/be-biome",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/example/mc-bedrock-seedfinder"
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

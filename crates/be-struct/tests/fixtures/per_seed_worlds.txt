@@ -1,0 +1,35 @@
+# Per-seed world-recreation ground truth, captured from the live BDS 1.26.43 server.
+#
+# Methodology (PLAN §4 "one fresh world per seed" harness model):
+#   For each seed: set `level-seed=<seed>` in server.properties, delete the world
+#   under /data/worlds, restart the container, then send `/locate` commands.
+#
+# These are real captured console lines from 2026-08-12. The village column doubles
+# as a control: the generator must predict village EXACTLY for every seed (it does).
+# trial_chambers is listed separately because /locate returns its bounding-box CENTRE
+# (block % 16 == 9), not the chunk anchor — see golden.rs.
+#
+# Format per block:
+#   seed: <numeric seed>
+#   village: <x>, <z>
+#   trial_chambers: <x>, <z>
+#
+seed: 42
+village: 680, -376
+trial_chambers: 281, 121
+
+seed: 12345
+village: -488, 248
+trial_chambers: 9, 233
+
+seed: 777
+village: -888, -200
+trial_chambers: 73, 41
+
+seed: 20240812
+village: -856, -904
+trial_chambers: 41, 71
+
+# seed -2932807814640844199 (the original random-seed world, extracted from level.dat):
+#   village: 184, 296
+#   trial_chambers: 169, 297

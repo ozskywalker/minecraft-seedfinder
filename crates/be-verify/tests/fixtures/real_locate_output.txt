@@ -1,0 +1,24 @@
+# Real BDS 1.26.43 `/locate` stdout, captured from the live mc-bedrock container
+# (ai-assistant-01.longbranch.lwalker.me, version 1.26.43.1, random seed).
+# Source of truth for the be-verify parser. Do not edit by hand; regenerate by
+# sending the corresponding `/locate` command and copying the console line.
+#
+# Structure locate (no y; literal "(y?)"):
+The nearest minecraft:village is at block 184, (y?), 296 (348 blocks away)
+The nearest minecraft:pillager_outpost is at block 472, (y?), 120 (487 blocks away)
+The nearest minecraft:ancient_city is at block 184, (y?), 2056 (2064 blocks away)
+The nearest minecraft:trial_chambers is at block 169, (y?), 297 (341 blocks away)
+The nearest minecraft:monument is at block 1288, (y?), 664 (1449 blocks away)
+The nearest minecraft:shipwreck is at block 696, (y?), 520 (868 blocks away)
+The nearest minecraft:buried_treasure is at block -440, (y?), -248 (505 blocks away)
+The nearest minecraft:ruined_portal is at block 312, (y?), 40 (314 blocks away)
+#
+# Biome locate (real y):
+The nearest minecraft:desert is at block 2656, 65, -3232 (4183 blocks away)
+The nearest minecraft:plains is at block -480, 63, -864 (988 blocks away)
+#
+# Not found:
+No valid structure found within a reasonable distance
+#
+# With the BDS console timestamp prefix (as seen in `docker logs`):
+[2026-08-12 12:43:46:912 INFO] The nearest minecraft:village is at block 184, (y?), 296 (348 blocks away)

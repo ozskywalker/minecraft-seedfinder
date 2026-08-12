@@ -1,0 +1,13 @@
+{
+  "responses": [
+    {
+      "match_prefix": "/locate structure village",
+      "lines": [
+        "The nearest minecraft:village is at block 184, (y?), 296 (348 blocks away)"
+      ]
+    }
+  ],
+  "default_lines": [
+    "No valid structure found within a reasonable distance"
+  ]
+}

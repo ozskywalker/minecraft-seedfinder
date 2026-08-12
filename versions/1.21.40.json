@@ -1,0 +1,157 @@
+{
+  "version": "1.21.40",
+  "seed_bits": 64,
+  "validated_against": "STRUCTURES: BDS 1.26.43.1 live server — village/ocean_monument/ancient_city/pillager_outpost/shipwreck/buried_treasure/ruined_portal predicted EXACTLY on random-seed world -2932807814640844199 AND 4 fresh per-seed worlds (42, 12345, 777, 20240812); 30-sample corpus (seeds 0..4) at 100% accuracy (fixtures/corpus-1.21.40.json). trial_chambers returns bounding-box CENTRE (block%16!=8), jigsaw, salt NOT confirmable via /locate (PLAN §4/§2.8). BIOMES: NOT validated — cubiomes (<=1.21) gives 18% agreement vs BDS 1.26.43 /locate biome (11 samples); biome generation changed post-1.21, gate RED (see be-biome lib.rs).",
+  "structures": {
+    "desert_pyramid": {
+      "salt": 14357617,
+      "spacing": 32,
+      "chunk_range": 24,
+      "distribution": "linear",
+      "biomes": ["desert", "desert_hills", "desert_lakes"],
+      "shares_slot_with": ["igloo", "jungle_pyramid", "swamp_hut"],
+      "provenance": "ChunkBiomesGUI Bfinders.c + MCBEStructureFinder + bedrockified; PLAN §2.5",
+      "confidence": "high"
+    },
+    "igloo": {
+      "salt": 14357617,
+      "spacing": 32,
+      "chunk_range": 24,
+      "distribution": "linear",
+      "biomes": ["icePlains", "coldTaiga"],
+      "shares_slot_with": ["desert_pyramid", "jungle_pyramid", "swamp_hut"],
+      "provenance": "PLAN §2.5 shared-salt scattered feature",
+      "confidence": "medium"
+    },
+    "jungle_pyramid": {
+      "salt": 14357617,
+      "spacing": 32,
+      "chunk_range": 24,
+      "distribution": "linear",
+      "biomes": ["jungle", "jungle_hills"],
+      "shares_slot_with": ["desert_pyramid", "igloo", "swamp_hut"],
+      "provenance": "ChunkBiomesGUI Bfinders.c + MCBEStructureFinder; PLAN §2.5",
+      "confidence": "high"
+    },
+    "swamp_hut": {
+      "salt": 14357617,
+      "spacing": 32,
+      "chunk_range": 24,
+      "distribution": "linear",
+      "biomes": ["swamp", "swampland"],
+      "shares_slot_with": ["desert_pyramid", "igloo", "jungle_pyramid"],
+      "provenance": "ChunkBiomesGUI Bfinders.c + MCBEStructureFinder; PLAN §2.5",
+      "confidence": "high"
+    },
+    "village": {
+      "salt": 10387312,
+      "spacing": 34,
+      "chunk_range": 26,
+      "distribution": "triangular",
+      "biomes": [],
+      "shares_slot_with": [],
+      "provenance": "bedrockified + MCBEStructureFinder; PLAN §2.5 (Bedrock 1.18+)",
+      "confidence": "high"
+    },
+    "ocean_monument": {
+      "salt": 10387313,
+      "spacing": 32,
+      "chunk_range": 27,
+      "distribution": "triangular",
+      "biomes": ["deep_ocean", "deep_warm_ocean", "deep_lukewarm_ocean", "deep_cold_ocean", "deep_frozen_ocean"],
+      "shares_slot_with": [],
+      "provenance": "bedrockified + MCBEStructureFinder; PLAN §2.5",
+      "confidence": "high"
+    },
+    "woodland_mansion": {
+      "salt": 10387319,
+      "spacing": 80,
+      "chunk_range": 60,
+      "distribution": "triangular",
+      "biomes": ["roofedForest"],
+      "shares_slot_with": [],
+      "provenance": "bedrockified + MCBEStructureFinder; PLAN §2.5",
+      "confidence": "high"
+    },
+    "pillager_outpost": {
+      "salt": 165745296,
+      "spacing": 80,
+      "chunk_range": 56,
+      "distribution": "triangular",
+      "biomes": [],
+      "shares_slot_with": [],
+      "provenance": "ChunkBiomesGUI; PLAN §2.5 (diverges from Java: 80/56 triangular)",
+      "confidence": "medium"
+    },
+    "ancient_city": {
+      "salt": 20083232,
+      "spacing": 24,
+      "chunk_range": 16,
+      "distribution": "triangular",
+      "biomes": ["deep_dark"],
+      "shares_slot_with": [],
+      "provenance": "ChunkBiomesGUI; PLAN §2.5 (Java shares spacing, Bedrock triangular)",
+      "confidence": "medium"
+    },
+    "ruined_portal": {
+      "salt": 40552231,
+      "spacing": 40,
+      "chunk_range": 25,
+      "distribution": "linear",
+      "biomes": [],
+      "shares_slot_with": [],
+      "provenance": "PLAN §2.5 (salt differs from Java)",
+      "confidence": "medium"
+    },
+    "buried_treasure": {
+      "salt": 16842397,
+      "spacing": 4,
+      "chunk_range": 2,
+      "distribution": "triangular",
+      "biomes": [],
+      "shares_slot_with": [],
+      "provenance": "PLAN §2.5 (differs from Java in salt, spacing, distribution)",
+      "confidence": "medium"
+    },
+    "shipwreck": {
+      "salt": 165745295,
+      "spacing": 24,
+      "chunk_range": 20,
+      "distribution": "linear",
+      "biomes": [],
+      "shares_slot_with": [],
+      "provenance": "PLAN §2.5; distribution was UNCONFIRMED (?), linear assumed — now validated EXACT against live BDS 1.26.43 (golden test)",
+      "confidence": "high"
+    },
+    "ocean_ruin": {
+      "salt": 14357621,
+      "spacing": 20,
+      "chunk_range": 12,
+      "distribution": "linear",
+      "biomes": [],
+      "shares_slot_with": [],
+      "provenance": "PLAN §2.5; distribution flagged UNCONFIRMED (?), linear assumed",
+      "confidence": "low"
+    },
+    "trail_ruins": {
+      "salt": 83469867,
+      "spacing": 34,
+      "chunk_range": 26,
+      "distribution": "triangular",
+      "biomes": [],
+      "shares_slot_with": [],
+      "provenance": "PLAN §2.5; distribution flagged UNCONFIRMED (?), triangular assumed",
+      "confidence": "low"
+    },
+    "trial_chambers": {
+      "salt": 94251327,
+      "spacing": 34,
+      "chunk_range": 22,
+      "distribution": "triangular",
+      "biomes": [],
+      "shares_slot_with": [],
+      "provenance": "PLAN §2.5; distribution flagged UNCONFIRMED (?), triangular assumed. /locate returns bounding-box CENTRE (block %16==9), NOT chunk anchor (PLAN §4/§2.8 jigsaw). No salt in 0..200M gives constant residual across 5 seeds (42/12345/777/20240812/-2932807814640844199) — salt/distribution NOT confirmable via /locate alone.",
+      "confidence": "low"
+    }
+  }
+}

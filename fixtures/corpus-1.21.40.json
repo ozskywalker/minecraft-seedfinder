@@ -1,0 +1,274 @@
+{
+  "samples": [
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "village",
+      "observed": {
+        "x": 232,
+        "z": 696
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "ancient_city",
+      "observed": {
+        "x": -1000,
+        "z": 1592
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "pillager_outpost",
+      "observed": {
+        "x": 1432,
+        "z": 3208
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "shipwreck",
+      "observed": {
+        "x": -648,
+        "z": -568
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "buried_treasure",
+      "observed": {
+        "x": 136,
+        "z": 72
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "ruined_portal",
+      "observed": {
+        "x": 296,
+        "z": 376
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "village",
+      "observed": {
+        "x": 152,
+        "z": 808
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "ancient_city",
+      "observed": {
+        "x": -1752,
+        "z": -1832
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "pillager_outpost",
+      "observed": {
+        "x": 840,
+        "z": 424
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "shipwreck",
+      "observed": {
+        "x": -184,
+        "z": -136
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "buried_treasure",
+      "observed": {
+        "x": 136,
+        "z": 136
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "ruined_portal",
+      "observed": {
+        "x": 56,
+        "z": 376
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "village",
+      "observed": {
+        "x": -456,
+        "z": 136
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "ancient_city",
+      "observed": {
+        "x": -664,
+        "z": -232
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "pillager_outpost",
+      "observed": {
+        "x": -840,
+        "z": -856
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "shipwreck",
+      "observed": {
+        "x": 152,
+        "z": 632
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "buried_treasure",
+      "observed": {
+        "x": -56,
+        "z": 328
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "ruined_portal",
+      "observed": {
+        "x": 376,
+        "z": 376
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "village",
+      "observed": {
+        "x": 680,
+        "z": 184
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "ancient_city",
+      "observed": {
+        "x": -1032,
+        "z": 1288
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "pillager_outpost",
+      "observed": {
+        "x": -920,
+        "z": -1048
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "shipwreck",
+      "observed": {
+        "x": 584,
+        "z": -312
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "buried_treasure",
+      "observed": {
+        "x": 520,
+        "z": 136
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "ruined_portal",
+      "observed": {
+        "x": 168,
+        "z": 232
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "village",
+      "observed": {
+        "x": -360,
+        "z": -312
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "ancient_city",
+      "observed": {
+        "x": -2680,
+        "z": 568
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "pillager_outpost",
+      "observed": {
+        "x": -760,
+        "z": -648
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "shipwreck",
+      "observed": {
+        "x": -232,
+        "z": 520
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "buried_treasure",
+      "observed": {
+        "x": -120,
+        "z": -248
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "ruined_portal",
+      "observed": {
+        "x": 24,
+        "z": 200
+      }
+    }
+  ]
+}

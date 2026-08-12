@@ -1,0 +1,14 @@
+[package]
+name = "cubiomes-sys"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Unsafe FFI over vendored cubiomes (MIT). See src/lib.rs.
+links = "cubiomes"
+
+[build-dependencies]
+cc = "1"
+
+[lib]
+path = "src/lib.rs"
