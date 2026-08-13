@@ -106,12 +106,7 @@ mod tests {
     #[test]
     fn shared_salt_slot_is_consistent() {
         let v = Version::builtin_1_21_40();
-        let scattered = [
-            "desert_pyramid",
-            "igloo",
-            "jungle_pyramid",
-            "swamp_hut",
-        ];
+        let scattered = ["desert_pyramid", "igloo", "jungle_pyramid", "swamp_hut"];
         let params = scattered.map(|k| &v.structures[k]);
         // All four share salt 14357617 and spacing 32 (PLAN §2.5).
         for s in &params {
@@ -122,8 +117,13 @@ mod tests {
         for k in scattered {
             let s = &v.structures[k];
             for other in &s.shares_slot_with {
-                assert!(scattered.contains(&other.as_str()), "{other} not in scattered set");
-                assert!(v.structures[other].shares_slot_with.contains(&k.to_string()));
+                assert!(
+                    scattered.contains(&other.as_str()),
+                    "{other} not in scattered set"
+                );
+                assert!(v.structures[other]
+                    .shares_slot_with
+                    .contains(&k.to_string()));
             }
         }
     }

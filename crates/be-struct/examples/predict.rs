@@ -29,7 +29,9 @@ fn main() {
     let structure = get("--structure").expect("--structure").to_string();
     let bx: i64 = get("--x").expect("--x").parse().expect("x");
     let bz: i64 = get("--z").expect("--z").parse().expect("z");
-    let table = get("--table").map(String::from).unwrap_or_else(|| "1.21.40".into());
+    let table = get("--table")
+        .map(String::from)
+        .unwrap_or_else(|| "1.21.40".into());
 
     let version = Version::builtin_1_21_40();
     let params = version.structures.get(&structure).unwrap_or_else(|| {
@@ -55,7 +57,10 @@ fn main() {
 
     println!("structure : {structure}");
     println!("version   : {table}");
-    println!("region    : ({reg_x}, {reg_z})   [spacing={}]", params.spacing);
+    println!(
+        "region    : ({reg_x}, {reg_z})   [spacing={}]",
+        params.spacing
+    );
     println!("observed  : ({bx}, {bz})");
     println!("predicted : ({px}, {pz})");
     println!("offset    : dx={dx}, dz={dz}, dist={dist:.1}");

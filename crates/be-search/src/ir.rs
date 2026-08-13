@@ -311,6 +311,10 @@ mod tests {
         assert_eq!(pruned.dropped_vars, 0);
         assert_eq!(pruned.query.vars.len(), 4);
         // The edge to x1 should still point at the correct (same-index) var.
-        assert!(pruned.query.edges.iter().any(|e| e.a == Anchor::Var(3) || e.b == Anchor::Var(3)));
+        assert!(pruned
+            .query
+            .edges
+            .iter()
+            .any(|e| e.a == Anchor::Var(3) || e.b == Anchor::Var(3)));
     }
 }

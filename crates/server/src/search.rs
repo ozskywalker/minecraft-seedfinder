@@ -9,9 +9,7 @@
 
 use std::sync::Arc;
 
-use be_search::{
-    BiomeEngine, Engine, Feasibility, Mode, Plan, Query, Version, check, parse, plan,
-};
+use be_search::{check, parse, plan, BiomeEngine, Engine, Feasibility, Mode, Plan, Query, Version};
 use tokio::sync::mpsc;
 
 /// A message streamed to the SSE client.
@@ -113,7 +111,10 @@ pub fn run_search(job: Arc<SearchJob>, tx: mpsc::Sender<SearchEvent>) {
     engine.search_range_visit(job.low_start, job.low_end, |cand| {
         if !job.include_biomes {
             let positions = bind_positions(query, &cand.positions);
-            let _ = tx.blocking_send(SearchEvent::Result { seed: cand.seed, positions });
+            let _ = tx.blocking_send(SearchEvent::Result {
+                seed: cand.seed,
+                positions,
+            });
             count += 1;
             return;
         }
@@ -124,7 +125,10 @@ pub fn run_search(job: Arc<SearchJob>, tx: mpsc::Sender<SearchEvent>) {
             let full = ((high as u64) << 32) | low;
             if biome_engine.passes(full, &cand.positions) {
                 let positions = bind_positions(query, &cand.positions);
-                let _ = tx.blocking_send(SearchEvent::Result { seed: full, positions });
+                let _ = tx.blocking_send(SearchEvent::Result {
+                    seed: full,
+                    positions,
+                });
                 count += 1;
                 emitted += 1;
                 if job.max_per_candidate != 0 && emitted >= job.max_per_candidate {
@@ -138,10 +142,7 @@ pub fn run_search(job: Arc<SearchJob>, tx: mpsc::Sender<SearchEvent>) {
 }
 
 /// Convert a candidate's raw positions into (var_name, x, z) triples for the client.
-fn bind_positions(
-    query: &Query,
-    positions: &[be_search::Pos],
-) -> Vec<(String, i64, i64)> {
+fn bind_positions(query: &Query, positions: &[be_search::Pos]) -> Vec<(String, i64, i64)> {
     query
         .vars
         .iter()
@@ -156,17 +157,9 @@ mod tests {
 
     #[test]
     fn from_dsl_builds_job_and_reports_mode() {
-        let job = SearchJob::from_dsl(
-            "village v1 @origin <= 800",
-            0,
-            10,
-            0,
-            5,
-            0,
-            false,
-        )
-        .expect("valid dsl")
-        .expect("feasible");
+        let job = SearchJob::from_dsl("village v1 @origin <= 800", 0, 10, 0, 5, 0, false)
+            .expect("valid dsl")
+            .expect("feasible");
         assert_eq!(job.mode(), Mode::Exhaustive);
     }
 

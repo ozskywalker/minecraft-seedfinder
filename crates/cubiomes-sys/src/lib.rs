@@ -182,7 +182,12 @@ mod tests {
         // (x, z, expected java id): verified against the real BDS 1.21.40 server.
         // seed 0: plains=1 at (-800,-96), desert=2 at (608,-1632), forest=4 at (-32,-32),
         // ocean=0 at (-352,-352).
-        let cases: [(i32, i32, i32); 4] = [(-800, -96, 1), (608, -1632, 2), (-32, -32, 4), (-352, -352, 0)];
+        let cases: [(i32, i32, i32); 4] = [
+            (-800, -96, 1),
+            (608, -1632, 2),
+            (-32, -32, 4),
+            (-352, -352, 0),
+        ];
         unsafe {
             let g = generator_new();
             setup(g, mc_latest());

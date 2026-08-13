@@ -24,7 +24,7 @@
 use std::process::Command;
 use std::time::{Duration, Instant};
 
-use crate::locate::{LocateResult, parse_locate_output};
+use crate::locate::{parse_locate_output, LocateResult};
 
 /// How to execute a remote shell command (one line).
 pub trait RemoteRunner {
@@ -54,7 +54,11 @@ impl SshRunner {
 impl RemoteRunner for SshRunner {
     fn run(&self, remote_cmd: &str) -> std::io::Result<String> {
         let mut cmd = Command::new("ssh");
-        cmd.args(&self.ssh_opts).arg("-l").arg(&self.user).arg(&self.host).arg(remote_cmd);
+        cmd.args(&self.ssh_opts)
+            .arg("-l")
+            .arg(&self.user)
+            .arg(&self.host)
+            .arg(remote_cmd);
         let out = cmd.output()?;
         if !out.status.success() {
             let err = String::from_utf8_lossy(&out.stderr);
@@ -121,9 +125,7 @@ impl RemoteBedrock {
     fn docker_exec(&self, inner: &str) -> std::io::Result<String> {
         let c = &self.cfg.container;
         // Use bash -lc so quotes inside the docker command survive.
-        let remote = format!(
-            "sudo docker exec {c} bash -lc {inner:?}"
-        );
+        let remote = format!("sudo docker exec {c} bash -lc {inner:?}");
         self.cfg.runner.run(&remote)
     }
 
@@ -151,9 +153,7 @@ impl RemoteBedrock {
 
     /// Set the seed in server.properties. Pass `None` for a random seed (empty).
     pub fn set_seed(&self, seed: Option<i64>) -> std::io::Result<()> {
-        let value = seed
-            .map(|s| s.to_string())
-            .unwrap_or_default();
+        let value = seed.map(|s| s.to_string()).unwrap_or_default();
         // Escape the value for use inside the sed expression.
         let value_escaped = value.replace('&', "\\&").replace('/', "\\/");
         let inner = format!(
@@ -172,9 +172,10 @@ impl RemoteBedrock {
         if value.is_empty() {
             Ok(None)
         } else {
-            value.parse::<i64>().map(Some).map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string())
-            })
+            value
+                .parse::<i64>()
+                .map(Some)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))
         }
     }
 
@@ -300,15 +301,17 @@ impl RemoteBedrock {
     /// `not_found_marker` is a substring signalling a "not found" result (which also
     /// terminates polling). Returns `Ok(None)` only if neither marker appeared within
     /// the window (no response yet / not flushed).
-    fn poll_locate(&self, marker: &str, not_found_marker: &str) -> std::io::Result<Option<LocateResult>> {
+    fn poll_locate(
+        &self,
+        marker: &str,
+        not_found_marker: &str,
+    ) -> std::io::Result<Option<LocateResult>> {
         let since = self.remote_now_rfc3339()?;
         let deadline = Instant::now() + self.cfg.response_wait;
         loop {
             let last_after = self.docker_logs_since(&since, 200)?;
-            let mut found_lines: Vec<&str> = last_after
-                .lines()
-                .filter(|l| l.contains(marker))
-                .collect();
+            let mut found_lines: Vec<&str> =
+                last_after.lines().filter(|l| l.contains(marker)).collect();
 
             if let Some(line) = found_lines.pop() {
                 if let LocateResult::Found { x, z, y } = parse_locate_output(line) {
@@ -326,7 +329,6 @@ impl RemoteBedrock {
             std::thread::sleep(Duration::from_millis(500));
         }
     }
-
 }
 
 #[cfg(test)]
@@ -379,7 +381,9 @@ mod tests {
     }
 
     /// A fake runner that returns the given log tail and records issued commands.
-    fn cfg_with_logs(logs_tail: &str) -> (RemoteBedrock, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+    fn cfg_with_logs(
+        logs_tail: &str,
+    ) -> (RemoteBedrock, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
         let (runner, commands) = FakeRunner::new(logs_tail);
         (RemoteBedrock::new(cfg(runner)), commands)
     }
@@ -392,10 +396,18 @@ mod tests {
         );
         b.cfg.biome_namespace_required = false;
         let res = b.locate_biome("plains").unwrap();
-        assert_eq!(res, Some(LocateResult::Found { x: -32, z: -864, y: Some(71) }));
+        assert_eq!(
+            res,
+            Some(LocateResult::Found {
+                x: -32,
+                z: -864,
+                y: Some(71)
+            })
+        );
         let cmds = commands.lock().unwrap().clone();
         assert!(
-            cmds.iter().any(|c| c.contains("locate biome plains") && !c.contains("minecraft:")),
+            cmds.iter()
+                .any(|c| c.contains("locate biome plains") && !c.contains("minecraft:")),
             "expected a bare biome locate command, got {cmds:?}"
         );
     }
@@ -408,10 +420,18 @@ mod tests {
         );
         // biome_namespace_required defaults to true in cfg().
         let res = b.locate_biome("plains").unwrap();
-        assert_eq!(res, Some(LocateResult::Found { x: -480, z: -864, y: Some(63) }));
+        assert_eq!(
+            res,
+            Some(LocateResult::Found {
+                x: -480,
+                z: -864,
+                y: Some(63)
+            })
+        );
         let cmds = commands.lock().unwrap().clone();
         assert!(
-            cmds.iter().any(|c| c.contains("locate biome minecraft:plains")),
+            cmds.iter()
+                .any(|c| c.contains("locate biome minecraft:plains")),
             "expected a namespaced biome locate command, got {cmds:?}"
         );
     }
@@ -435,7 +455,14 @@ mod tests {
         let (runner, _) = FakeRunner::new(logs);
         let b = RemoteBedrock::new(cfg(runner));
         let res = b.locate("village").unwrap();
-        assert_eq!(res, Some(LocateResult::Found { x: 184, z: 296, y: None }));
+        assert_eq!(
+            res,
+            Some(LocateResult::Found {
+                x: 184,
+                z: 296,
+                y: None
+            })
+        );
     }
 
     #[test]
@@ -463,7 +490,8 @@ mod tests {
         b.delete_world().unwrap();
         let cmds = commands.lock().unwrap().clone();
         assert!(
-            cmds.iter().any(|c| c.contains("rm -rf") && c.contains("Bedrock level")),
+            cmds.iter()
+                .any(|c| c.contains("rm -rf") && c.contains("Bedrock level")),
             "expected a delete-world command, got {cmds:?}"
         );
     }

@@ -1,0 +1,68 @@
+# Release — on a `v*` tag, build the production single Windows `.exe` (UI embedded)
+# and attach it to a GitHub Release for that tag.
+#
+# Tag a version to trigger:
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# The tag push also triggers the CI workflow (CI runs on all pushes, tags included),
+# so a tagged release is gated by the same lint/vet/test checks.
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write # needed to create the GitHub Release + upload the asset
+
+jobs:
+  release:
+    name: Build Windows exe + publish release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI dependencies
+        run: npm ci
+        working-directory: ui
+
+      # Build ui/dist first so crates/server/build.rs embeds it into the binary.
+      - name: Build web UI
+        run: npm run build
+        working-directory: ui
+
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build server (release, UI embedded)
+        run: cargo build --release -p server
+
+      - name: Stage the single exe
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item target\release\server.exe dist\seedfinder.exe -Force
+
+      - name: Upload exe as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: seedfinder-windows-x64
+          path: dist/seedfinder.exe
+          if-no-files-found: error
+
+      - name: Create GitHub Release and attach exe
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: dist/seedfinder.exe

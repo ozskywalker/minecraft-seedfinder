@@ -7,7 +7,7 @@
 //! (dev mode).
 
 use axum::{
-    http::{StatusCode, header},
+    http::{header, StatusCode},
     response::{IntoResponse, Response},
 };
 
@@ -81,7 +81,10 @@ mod tests {
     #[test]
     fn content_type_by_extension() {
         assert_eq!(content_type("index.html"), "text/html; charset=utf-8");
-        assert_eq!(content_type("assets/app.js"), "application/javascript; charset=utf-8");
+        assert_eq!(
+            content_type("assets/app.js"),
+            "application/javascript; charset=utf-8"
+        );
         assert_eq!(content_type("assets/app.css"), "text/css; charset=utf-8");
         assert_eq!(content_type("favicon.ico"), "image/x-icon");
         assert_eq!(content_type("data.bin"), "application/octet-stream");
@@ -93,7 +96,10 @@ mod tests {
             return; // skip when the UI isn't embedded (dev checkout)
         }
         // index.html must be present.
-        assert!(embedded("index.html").is_some(), "index.html should be embedded");
+        assert!(
+            embedded("index.html").is_some(),
+            "index.html should be embedded"
+        );
         // Every asset in the manifest is reachable.
         let resp = handle_embedded("/");
         assert_eq!(resp.status(), StatusCode::OK);

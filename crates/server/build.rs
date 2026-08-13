@@ -38,7 +38,10 @@ fn main() {
         let cwd = std::env::current_dir().expect("current dir");
         let absolute = cwd.join(abs);
         let abs = absolute.to_string_lossy().replace('\\', "/");
-        code.push_str(&format!("        {:?} => Some(include_bytes!({:?})),\n", web, abs));
+        code.push_str(&format!(
+            "        {:?} => Some(include_bytes!({:?})),\n",
+            web, abs
+        ));
     }
     code.push_str("        _ => None,\n");
     code.push_str("    }\n");

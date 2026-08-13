@@ -100,9 +100,10 @@ fn variable_selectivity(query: &Query, var_idx: usize) -> f64 {
 /// Decide exhaustive vs satisficing (§3.1 table).
 fn choose_mode(query: &Query, order: &[usize]) -> Mode {
     let n = order.len();
-    let has_relational = query.edges.iter().any(|e| {
-        matches!((e.a, e.b), (Anchor::Var(_), Anchor::Var(_)))
-    });
+    let has_relational = query
+        .edges
+        .iter()
+        .any(|e| matches!((e.a, e.b), (Anchor::Var(_), Anchor::Var(_))));
     if n <= 2 && !has_relational {
         Mode::Exhaustive
     } else {

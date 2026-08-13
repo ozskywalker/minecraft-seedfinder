@@ -21,10 +21,7 @@ fn script_path(name: &str) -> PathBuf {
 fn harness(script: &str) -> BdsHarness {
     let cfg = BdsConfig {
         executable: fake_bds_bin(),
-        args: vec![
-            "--script".into(),
-            script_path(script).display().to_string(),
-        ],
+        args: vec!["--script".into(), script_path(script).display().to_string()],
         working_dir: None,
         level_seed: Some(1234),
         read_strategy: ReadStrategy::Sentinel("__BDS_RESPONSE_END__".into()),
@@ -52,7 +49,11 @@ fn harness_round_trip_locate() {
     assert_eq!(found.len(), 1);
     assert_eq!(
         parse_locate_output(&found[0]),
-        LocateResult::Found { x: 184, z: 296, y: None }
+        LocateResult::Found {
+            x: 184,
+            z: 296,
+            y: None
+        }
     );
     h.stop();
 }
@@ -73,7 +74,9 @@ fn sentinel_is_exclusive() {
 #[test]
 fn harness_returns_not_found() {
     let mut h = harness("not_found.json");
-    let lines = h.command("/locate structure ancient_city").expect("command");
+    let lines = h
+        .command("/locate structure ancient_city")
+        .expect("command");
     let results: Vec<_> = lines.iter().map(|l| parse_locate_output(l)).collect();
     assert!(results.contains(&LocateResult::NotFound));
     h.stop();
@@ -84,6 +87,13 @@ fn harness_returns_not_found() {
 fn verify_locates_structure() {
     let mut h = harness("village.json");
     let r = be_verify::verify::locate_structure(&mut h, "village").expect("io");
-    assert_eq!(r, Some(LocateResult::Found { x: 184, z: 296, y: None }));
+    assert_eq!(
+        r,
+        Some(LocateResult::Found {
+            x: 184,
+            z: 296,
+            y: None
+        })
+    );
     h.stop();
 }

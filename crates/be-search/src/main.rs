@@ -19,9 +19,7 @@
 use std::process::ExitCode;
 
 use be_biome::builtin_biome_map;
-use be_search::{
-    BiomeEngine, Engine, Feasibility, Version, check, parse, plan,
-};
+use be_search::{check, parse, plan, BiomeEngine, Engine, Feasibility, Version};
 
 const USAGE: &str = "\
 usage:
@@ -136,9 +134,7 @@ fn cmd_search(args: &[String]) -> ExitCode {
     let map = builtin_biome_map();
     let mc = cubiomes_sys::mc_latest();
     let mut biome_engine = BiomeEngine::new(&query, &map, mc);
-    println!(
-        "phase B: biome resolution over high32 in {high_start}..{high_end} (satisficing)"
-    );
+    println!("phase B: biome resolution over high32 in {high_start}..{high_end} (satisficing)");
 
     let mut emitted = 0usize;
     let filtered = biome_engine.resolve_biomes(&structural, high_start, high_end, max_per);

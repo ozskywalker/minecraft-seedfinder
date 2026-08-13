@@ -37,7 +37,7 @@ pub mod grid;
 pub mod map;
 pub mod query;
 
-pub use gate::{BiomeGate, structure_gate};
-pub use grid::{AgreementReport, BiomeGrid, compute_agreement};
-pub use map::{BiomeIdMap, builtin_biome_map};
+pub use gate::{structure_gate, BiomeGate};
+pub use grid::{compute_agreement, AgreementReport, BiomeGrid};
+pub use map::{builtin_biome_map, BiomeIdMap};
 pub use query::{BiomeQuery, CubiomesQuery};

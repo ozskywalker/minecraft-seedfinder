@@ -9,11 +9,11 @@
 //! - **Exact draw order** for the RNG (linear = 2 draws, triangular = 4 draws in a
 //!   specific order).
 
+#[cfg(test)]
+mod golden;
 pub mod placement;
 pub mod region;
 pub mod version;
-#[cfg(test)]
-mod golden;
 
 pub use placement::{structure_block_pos, Distribution};
 pub use region::{floor_div, region_of_block, region_seed};

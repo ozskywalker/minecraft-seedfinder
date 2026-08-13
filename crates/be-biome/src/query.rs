@@ -4,7 +4,7 @@
 //! [`CubiomesQuery`] implements it over the vendored cubiomes FFI and owns the
 //! `Generator` pointer, freeing it on drop (RAII). It returns **Java** biome ids.
 
-use cubiomes_sys::{Generator, apply_seed, biome_at, generator_free, generator_new, setup};
+use cubiomes_sys::{apply_seed, biome_at, generator_free, generator_new, setup, Generator};
 
 /// A source of biome numeric ids at block coordinates.
 pub trait BiomeQuery {

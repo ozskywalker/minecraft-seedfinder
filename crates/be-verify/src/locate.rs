@@ -92,11 +92,7 @@ impl LocateCommand {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LocateResult {
     /// A coordinate triple was found: `x, z` (blocks) and, for biomes, `y`.
-    Found {
-        x: i64,
-        z: i64,
-        y: Option<i64>,
-    },
+    Found { x: i64, z: i64, y: Option<i64> },
     /// The structure/biome could not be located.
     NotFound,
     /// Output did not match a known shape (coordinate nor failure marker).
@@ -180,9 +176,15 @@ mod tests {
     #[test]
     fn biome_command_namespace_version_gating() {
         // < 1.21.100: bare id.
-        assert_eq!(LocateCommand::biome("plains").render(false), "/locate biome plains");
+        assert_eq!(
+            LocateCommand::biome("plains").render(false),
+            "/locate biome plains"
+        );
         // >= 1.21.100: namespace required.
-        assert_eq!(LocateCommand::biome("plains").render(true), "/locate biome minecraft:plains");
+        assert_eq!(
+            LocateCommand::biome("plains").render(true),
+            "/locate biome minecraft:plains"
+        );
         // Already-namespaced ids are left alone.
         assert_eq!(
             LocateCommand::biome("minecraft:plains").render(true),
@@ -196,7 +198,11 @@ mod tests {
         let line = "The nearest minecraft:village is at block 184, (y?), 296 (348 blocks away)";
         assert_eq!(
             parse_locate_output(line),
-            LocateResult::Found { x: 184, z: 296, y: None }
+            LocateResult::Found {
+                x: 184,
+                z: 296,
+                y: None
+            }
         );
     }
 
@@ -206,22 +212,35 @@ mod tests {
         let line = "The nearest minecraft:desert is at block 2656, 65, -3232 (4183 blocks away)";
         assert_eq!(
             parse_locate_output(line),
-            LocateResult::Found { x: 2656, z: -3232, y: Some(65) }
+            LocateResult::Found {
+                x: 2656,
+                z: -3232,
+                y: Some(65)
+            }
         );
         let line2 = "The nearest minecraft:plains is at block -480, 63, -864 (988 blocks away)";
         assert_eq!(
             parse_locate_output(line2),
-            LocateResult::Found { x: -480, z: -864, y: Some(63) }
+            LocateResult::Found {
+                x: -480,
+                z: -864,
+                y: Some(63)
+            }
         );
     }
 
     /// Negative structure coordinates parse. Real BDS 1.26 captured output.
     #[test]
     fn parse_found_negative_structure() {
-        let line = "The nearest minecraft:buried_treasure is at block -440, (y?), -248 (505 blocks away)";
+        let line =
+            "The nearest minecraft:buried_treasure is at block -440, (y?), -248 (505 blocks away)";
         assert_eq!(
             parse_locate_output(line),
-            LocateResult::Found { x: -440, z: -248, y: None }
+            LocateResult::Found {
+                x: -440,
+                z: -248,
+                y: None
+            }
         );
     }
 
@@ -231,12 +250,20 @@ mod tests {
         let line = "The nearest minecraft:shipwreck is at block 696, (y?), 520 (868 blocks away)";
         assert_eq!(
             parse_locate_output(line),
-            LocateResult::Found { x: 696, z: 520, y: None }
+            LocateResult::Found {
+                x: 696,
+                z: 520,
+                y: None
+            }
         );
         let line = "The nearest minecraft:monument is at block 1288, (y?), 664 (1449 blocks away)";
         assert_eq!(
             parse_locate_output(line),
-            LocateResult::Found { x: 1288, z: 664, y: None }
+            LocateResult::Found {
+                x: 1288,
+                z: 664,
+                y: None
+            }
         );
     }
 
@@ -246,7 +273,11 @@ mod tests {
         let line = "[2026-08-12 12:43:46:912 INFO] The nearest minecraft:village is at block 184, (y?), 296 (348 blocks away)";
         assert_eq!(
             parse_locate_output(line),
-            LocateResult::Found { x: 184, z: 296, y: None }
+            LocateResult::Found {
+                x: 184,
+                z: 296,
+                y: None
+            }
         );
     }
 
@@ -268,7 +299,10 @@ mod tests {
     #[test]
     fn parse_unparseable() {
         let line = "Some unrelated log line";
-        assert_eq!(parse_locate_output(line), LocateResult::Unparseable(line.to_string()));
+        assert_eq!(
+            parse_locate_output(line),
+            LocateResult::Unparseable(line.to_string())
+        );
     }
 
     /// Every real captured line in the fixture must parse to the expected result.
@@ -292,7 +326,10 @@ mod tests {
                 }
             }
         }
-        assert_eq!(found, 11, "expected 11 found lines (8 structure + 2 biome + 1 timestamped)");
+        assert_eq!(
+            found, 11,
+            "expected 11 found lines (8 structure + 2 biome + 1 timestamped)"
+        );
         assert_eq!(not_found, 1, "expected 1 not-found line");
     }
 }

@@ -16,14 +16,14 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use axum::{
-    Router,
     extract::{Path, State},
-    http::{StatusCode, header},
+    http::{header, StatusCode},
     response::{
-        IntoResponse, Response,
         sse::{Event, KeepAlive, Sse},
+        IntoResponse, Response,
     },
     routing::{get, post},
+    Router,
 };
 use futures::stream::Stream;
 use serde::Deserialize;
@@ -96,14 +96,14 @@ pub fn app(state: AppState) -> Router {
     } else {
         // Default UI dir is anchored to the crate so it works regardless of cwd (tests
         // run from crates/server; the binary may be run from anywhere). Overridable.
-        let ui_dir = std::env::var("SEEDFINDER_UI_DIR").unwrap_or_else(|_| {
-            concat!(env!("CARGO_MANIFEST_DIR"), "/../../ui/dist").to_string()
-        });
-        let static_service = tower_http::services::ServeDir::new(&ui_dir)
-            .not_found_service(tower_http::services::ServeFile::new(concat!(
+        let ui_dir = std::env::var("SEEDFINDER_UI_DIR")
+            .unwrap_or_else(|_| concat!(env!("CARGO_MANIFEST_DIR"), "/../../ui/dist").to_string());
+        let static_service = tower_http::services::ServeDir::new(&ui_dir).not_found_service(
+            tower_http::services::ServeFile::new(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/src/index_placeholder.html"
-            )));
+            )),
+        );
         api.fallback_service(static_service).with_state(state)
     }
 }
@@ -177,11 +177,11 @@ async fn search_handler(
 }
 
 /// Convert a channel of events into an SSE response.
-fn sse_response(
-    rx: mpsc::Receiver<search::SearchEvent>,
-) -> Response {
+fn sse_response(rx: mpsc::Receiver<search::SearchEvent>) -> Response {
     let stream = tokio_stream_rx(rx);
-    Sse::new(stream).keep_alive(KeepAlive::default()).into_response()
+    Sse::new(stream)
+        .keep_alive(KeepAlive::default())
+        .into_response()
 }
 
 /// Adapt a `tokio::sync::mpsc::Receiver` into a `Stream<Item = Result<Event, ...>>`.
@@ -322,11 +322,17 @@ mod tests {
         }
         #[cfg(target_os = "macos")]
         {
-            assert_eq!(browser_command("http://x"), vec!["open".to_string(), "http://x".to_string()]);
+            assert_eq!(
+                browser_command("http://x"),
+                vec!["open".to_string(), "http://x".to_string()]
+            );
         }
         #[cfg(all(unix, not(target_os = "macos")))]
         {
-            assert_eq!(browser_command("http://x"), vec!["xdg-open".to_string(), "http://x".to_string()]);
+            assert_eq!(
+                browser_command("http://x"),
+                vec!["xdg-open".to_string(), "http://x".to_string()]
+            );
         }
     }
 
@@ -405,7 +411,12 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let ct = resp.headers().get("content-type").unwrap().to_str().unwrap();
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap();
         assert!(ct.contains("image/png"), "content-type: {ct}");
         let _ = Duration::new(0, 0);
     }
@@ -421,7 +432,12 @@ mod tests {
         let req = Request::builder().uri("/").body(Body::empty()).unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let ct = resp.headers().get("content-type").unwrap().to_str().unwrap();
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap();
         assert!(ct.contains("text/html"), "content-type: {ct}");
     }
 
@@ -439,7 +455,12 @@ mod tests {
             .unwrap();
         let resp = app.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::OK);
-        let ct = resp.headers().get("content-type").unwrap().to_str().unwrap();
+        let ct = resp
+            .headers()
+            .get("content-type")
+            .unwrap()
+            .to_str()
+            .unwrap();
         assert!(ct.contains("application/json"), "content-type: {ct}");
         let body = resp.into_body();
         let bytes = axum::body::to_bytes(body, usize::MAX).await.unwrap();

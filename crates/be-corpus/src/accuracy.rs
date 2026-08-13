@@ -42,7 +42,16 @@ impl AccuracyReport {
         ));
         out.push_str(&format!(
             "{:<10} {:<20} {:>4} {:>5} {:>5} {:>7} {:>9} {:>9} {:>10} {:>10}\n",
-            "version", "structure", "n", "exact", "<=tol", "rate%", "mean", "max", "off.dx", "off.dz"
+            "version",
+            "structure",
+            "n",
+            "exact",
+            "<=tol",
+            "rate%",
+            "mean",
+            "max",
+            "off.dx",
+            "off.dz"
         ));
         for g in &self.groups {
             out.push_str(&format!(
@@ -180,7 +189,10 @@ pub struct BiomeAgreementReport {
 impl BiomeAgreementReport {
     pub fn render(&self) -> String {
         let mut out = String::from("biome agreement report\n");
-        out.push_str(&format!("{:<24} {:>4} {:>6} {:>8}\n", "biome", "n", "match", "rate%"));
+        out.push_str(&format!(
+            "{:<24} {:>4} {:>6} {:>8}\n",
+            "biome", "n", "match", "rate%"
+        ));
         for g in &self.groups {
             out.push_str(&format!(
                 "{:<24} {:>4} {:>6} {:>7.1}\n",
@@ -262,8 +274,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use be_struct::Distribution;
     use crate::corpus::{BlockPos, Sample};
+    use be_struct::Distribution;
 
     fn version() -> Version {
         Version::builtin_1_21_40()
@@ -279,7 +291,13 @@ mod tests {
         // (self-consistency): the accuracy layer should then report exact.
         let seed = 1234u64;
         let (bx, bz) = structure_block_pos(
-            seed, 2, -1, s.salt, s.spacing, s.chunk_range, Distribution::Triangular,
+            seed,
+            2,
+            -1,
+            s.salt,
+            s.spacing,
+            s.chunk_range,
+            Distribution::Triangular,
         );
         let mut c = Corpus::new();
         c.push(Sample {
@@ -305,7 +323,13 @@ mod tests {
         let s = &v.structures["desert_pyramid"]; // linear
         let seed = 999u64;
         let (bx, bz) = structure_block_pos(
-            seed, 0, 0, s.salt, s.spacing, s.chunk_range, Distribution::Linear,
+            seed,
+            0,
+            0,
+            s.salt,
+            s.spacing,
+            s.chunk_range,
+            Distribution::Linear,
         );
         // Observed shifted +8 in x (a plausible anchor-vs-centre offset).
         let mut c = Corpus::new();
@@ -349,12 +373,28 @@ mod tests {
         let s = &v.structures["village"];
         let seed = 555u64;
         let (bx, bz) = structure_block_pos(
-            seed, 1, 1, s.salt, s.spacing, s.chunk_range, Distribution::Triangular,
+            seed,
+            1,
+            1,
+            s.salt,
+            s.spacing,
+            s.chunk_range,
+            Distribution::Triangular,
         );
         let mut c = Corpus::new();
         // one exact, one off by 40 (outside tol 16)
-        c.push(Sample { version: "1.21.40".into(), seed, structure: "village".into(), observed: BlockPos::new(bx, bz) });
-        c.push(Sample { version: "1.21.40".into(), seed, structure: "village".into(), observed: BlockPos::new(bx + 40, bz) });
+        c.push(Sample {
+            version: "1.21.40".into(),
+            seed,
+            structure: "village".into(),
+            observed: BlockPos::new(bx, bz),
+        });
+        c.push(Sample {
+            version: "1.21.40".into(),
+            seed,
+            structure: "village".into(),
+            observed: BlockPos::new(bx + 40, bz),
+        });
         assert_eq!(overall_rate(&c, &v, 16), Some(0.5));
     }
 
@@ -362,9 +402,22 @@ mod tests {
     fn report_renders_table() {
         let v = version();
         let s = &v.structures["village"];
-        let (bx, bz) = structure_block_pos(5, 0, 0, s.salt, s.spacing, s.chunk_range, Distribution::Triangular);
+        let (bx, bz) = structure_block_pos(
+            5,
+            0,
+            0,
+            s.salt,
+            s.spacing,
+            s.chunk_range,
+            Distribution::Triangular,
+        );
         let mut c = Corpus::new();
-        c.push(Sample { version: "1.21.40".into(), seed: 5, structure: "village".into(), observed: BlockPos::new(bx, bz) });
+        c.push(Sample {
+            version: "1.21.40".into(),
+            seed: 5,
+            structure: "village".into(),
+            observed: BlockPos::new(bx, bz),
+        });
         let report = compute_accuracy(&c, &v, 16);
         let text = report.render();
         assert!(text.contains("village"));
@@ -410,7 +463,10 @@ mod tests {
         let desert = report.groups.iter().find(|g| g.biome == "desert").unwrap();
         assert_eq!(desert.matches, 0);
         assert_eq!(desert.rate, 0.0);
-        assert_eq!(biome_overall_rate(&biome_corpus(), query, resolve), Some(0.5));
+        assert_eq!(
+            biome_overall_rate(&biome_corpus(), query, resolve),
+            Some(0.5)
+        );
     }
 
     #[test]

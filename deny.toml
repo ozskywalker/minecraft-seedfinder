@@ -1,0 +1,33 @@
+# cargo-deny configuration.
+# Docs: https://embarkstudios.github.io/cargo-deny/
+# Run locally:  cargo deny check     (or `cargo install cargo-deny` first)
+# CI runs this via EmbarkStudios/cargo-deny-action on every push.
+
+[advisories]
+# Don't hard-fail on a yanked transitive dep; warn instead. The license/advisory
+# gates below are the real CI gate and must fail the build when tripped.
+yanked = "warn"
+
+[bans]
+# Warn (don't fail) on multiple versions of the same crate; we prefer not to, but
+# some transitive deps legitimately diverge.
+multiple-versions = "warn"
+
+[licenses]
+# Permissive allowlist. The project itself is MIT; these cover the common
+# permissive licenses across the transitive dependency tree (axum/tokio/image/...).
+# If a first CI run flags a license, add the SPDX id here rather than loosening.
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "0BSD",
+  "Unlicense",
+  "Zlib",
+  "Unicode-3.0",
+  "CC0-1.0",
+  "BSL-1.0",
+  "MPL-2.0",
+]

@@ -97,7 +97,10 @@ fn parse_statement(
         &at[1..]
     } else {
         if at != "@" {
-            return Err(DslError::new(lineno, format!("expected '@' before anchor, got '{at}'")));
+            return Err(DslError::new(
+                lineno,
+                format!("expected '@' before anchor, got '{at}'"),
+            ));
         }
         next(tokens.next(), lineno, "missing anchor")?
     };
@@ -184,7 +187,10 @@ fn parse_range(src: &str, lineno: usize) -> Result<(u32, u32), DslError> {
             let b = parse_u32(b, lineno)?;
             return Ok((a, b));
         }
-        return Err(DslError::new(lineno, "expected 'in A..B' range".to_string()));
+        return Err(DslError::new(
+            lineno,
+            "expected 'in A..B' range".to_string(),
+        ));
     }
     Err(DslError::new(
         lineno,
@@ -282,7 +288,10 @@ woodland_mansion x1  @origin >= 3000
         assert_eq!(q.edges.len(), 4);
         assert_eq!(q.vars[0].name, "v1");
         assert!(matches!(q.vars[0].kind, VarKind::Structure(ref s) if s == "village"));
-        assert_eq!(q.vars[1].biome_gate.as_deref(), Some(&["desert".to_string()][..]));
+        assert_eq!(
+            q.vars[1].biome_gate.as_deref(),
+            Some(&["desert".to_string()][..])
+        );
         assert_eq!(q.edges[0].a, Anchor::Origin);
         assert_eq!(q.edges[0].b, Anchor::Var(0));
         assert_eq!((q.edges[0].min, q.edges[0].max), (0, 800));

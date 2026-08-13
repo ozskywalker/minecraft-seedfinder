@@ -57,39 +57,39 @@ impl TileCache {
 fn biome_color(id: u16) -> [u8; 3] {
     // Approximate palette keyed by Java biome id (surface biomes).
     match id {
-        0 => [52, 90, 168],        // ocean
-        1 => [141, 179, 96],       // plains
-        2 => [219, 196, 138],      // desert
-        3 => [140, 180, 90],       // windswept hills
-        4 => [59, 115, 40],        // forest
-        5 => [80, 90, 100],        // taiga
-        6 => [80, 105, 60],        // swamp
-        7 => [140, 190, 100],      // river
-        9 => [160, 160, 160],      // beach
-        12 => [170, 180, 200],     // ice plains / snowy plains
-        17 => [200, 180, 140],     // desert hills
-        18 => [90, 140, 60],       // forest hills
-        21 => [53, 108, 42],       // jungle
-        22 => [70, 90, 50],        // jungle hills
-        24 => [170, 170, 190],     // frozen ocean
-        25 => [200, 200, 210],     // frozen river
-        26 => [210, 210, 215],     // snowy taiga
-        27 => [220, 220, 225],     // snowy mountains
-        29 => [20, 70, 20],        // roofed forest / dark forest
-        30 => [140, 110, 60],      // snowy beach
-        32 => [150, 150, 150],     // stone shore
-        34 => [90, 150, 90],       // swamp hills
-        44 => [180, 120, 80],      // wooded badlands
-        45 => [200, 130, 90],      // badlands
-        47 => [200, 130, 90],      // eroded badlands
-        50 => [40, 80, 140],       // deep frozen ocean
-        129 => [160, 120, 90],     // sunflower plains
-        130 => [70, 120, 60],      // desert lakes
-        131 => [100, 140, 80],     // flower forest
-        132 => [60, 100, 70],      // taiga mountains
-        133 => [90, 110, 130],     // swamp hills
-        155 => [70, 110, 90],      // birch forest
-        _ => [120, 120, 120],      // unknown
+        0 => [52, 90, 168],    // ocean
+        1 => [141, 179, 96],   // plains
+        2 => [219, 196, 138],  // desert
+        3 => [140, 180, 90],   // windswept hills
+        4 => [59, 115, 40],    // forest
+        5 => [80, 90, 100],    // taiga
+        6 => [80, 105, 60],    // swamp
+        7 => [140, 190, 100],  // river
+        9 => [160, 160, 160],  // beach
+        12 => [170, 180, 200], // ice plains / snowy plains
+        17 => [200, 180, 140], // desert hills
+        18 => [90, 140, 60],   // forest hills
+        21 => [53, 108, 42],   // jungle
+        22 => [70, 90, 50],    // jungle hills
+        24 => [170, 170, 190], // frozen ocean
+        25 => [200, 200, 210], // frozen river
+        26 => [210, 210, 215], // snowy taiga
+        27 => [220, 220, 225], // snowy mountains
+        29 => [20, 70, 20],    // roofed forest / dark forest
+        30 => [140, 110, 60],  // snowy beach
+        32 => [150, 150, 150], // stone shore
+        34 => [90, 150, 90],   // swamp hills
+        44 => [180, 120, 80],  // wooded badlands
+        45 => [200, 130, 90],  // badlands
+        47 => [200, 130, 90],  // eroded badlands
+        50 => [40, 80, 140],   // deep frozen ocean
+        129 => [160, 120, 90], // sunflower plains
+        130 => [70, 120, 60],  // desert lakes
+        131 => [100, 140, 80], // flower forest
+        132 => [60, 100, 70],  // taiga mountains
+        133 => [90, 110, 130], // swamp hills
+        155 => [70, 110, 90],  // birch forest
+        _ => [120, 120, 120],  // unknown
     }
 }
 

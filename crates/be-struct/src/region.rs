@@ -87,7 +87,10 @@ mod tests {
             for b in [1i64, 2, 16, 24, 26, 32, 34, 80] {
                 let q = floor_div(a, b);
                 let r = a - b * q;
-                assert!((0..b).contains(&r), "a={a} b={b} -> q={q} r={r} not in [0,{b})");
+                assert!(
+                    (0..b).contains(&r),
+                    "a={a} b={b} -> q={q} r={r} not in [0,{b})"
+                );
             }
         }
     }

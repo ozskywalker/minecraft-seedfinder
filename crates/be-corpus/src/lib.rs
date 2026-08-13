@@ -22,8 +22,8 @@ pub mod accuracy;
 pub mod corpus;
 
 pub use accuracy::{
-    AccuracyReport, BiomeAgreementReport, StructureAccuracy, compute_accuracy,
-    compute_biome_agreement,
+    compute_accuracy, compute_biome_agreement, AccuracyReport, BiomeAgreementReport,
+    StructureAccuracy,
 };
 pub use be_struct::Version;
 pub use corpus::{BiomeSample, BlockPos, Corpus, Sample};
@@ -34,7 +34,12 @@ pub use corpus::{BiomeSample, BlockPos, Corpus, Sample};
 /// (PLAN §4). Returns `true` for versions at or above that gate.
 pub fn biome_namespace_required(version: &str) -> bool {
     let parts: Vec<&str> = version.split('.').collect();
-    let at = |idx: usize| parts.get(idx).and_then(|p| p.parse::<u32>().ok()).unwrap_or(0);
+    let at = |idx: usize| {
+        parts
+            .get(idx)
+            .and_then(|p| p.parse::<u32>().ok())
+            .unwrap_or(0)
+    };
     let (major, minor, patch) = (at(0), at(1), at(2));
     (major, minor, patch) >= (1, 21, 100)
 }

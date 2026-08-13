@@ -26,11 +26,17 @@ fn feasibility_impossible_reports_reason() {
     // Desert pyramid and jungle pyramid share one slot (§2.5); within 400 blocks is
     // impossible. The CLI must report the *reason*, not just "no results".
     let dsl = "desert_pyramid a @origin <= 2000\njungle_pyramid b @a <= 400";
-    let out = bin().args(["feasibility", dsl]).output().expect("run be-search");
+    let out = bin()
+        .args(["feasibility", dsl])
+        .output()
+        .expect("run be-search");
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("infeasible"), "stdout: {stdout}");
-    assert!(stdout.contains("share one placement slot"), "stdout: {stdout}");
+    assert!(
+        stdout.contains("share one placement slot"),
+        "stdout: {stdout}"
+    );
 }
 
 #[test]
@@ -71,7 +77,10 @@ fn search_skips_biomes_with_flag() {
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("phase A:"), "stdout: {stdout}");
-    assert!(!stdout.contains("phase B:"), "--no-biomes must skip Phase B: {stdout}");
+    assert!(
+        !stdout.contains("phase B:"),
+        "--no-biomes must skip Phase B: {stdout}"
+    );
 }
 
 #[test]
@@ -81,7 +90,10 @@ fn search_refuses_infeasible_query() {
     assert!(out.status.success());
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("infeasible"), "stdout: {stdout}");
-    assert!(!stdout.contains("emitted"), "must not run a search on an infeasible query");
+    assert!(
+        !stdout.contains("emitted"),
+        "must not run a search on an infeasible query"
+    );
 }
 
 #[test]

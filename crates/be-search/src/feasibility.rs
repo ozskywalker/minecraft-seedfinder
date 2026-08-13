@@ -175,8 +175,7 @@ fn share_slot(a: &str, b: &str) -> bool {
     let v = be_struct::Version::builtin_1_21_40();
     match (v.structures.get(a), v.structures.get(b)) {
         (Some(sa), Some(sb)) => {
-            sa.shares_slot_with.iter().any(|x| x == b)
-                || sb.shares_slot_with.iter().any(|x| x == a)
+            sa.shares_slot_with.iter().any(|x| x == b) || sb.shares_slot_with.iter().any(|x| x == a)
         }
         _ => false,
     }
@@ -233,8 +232,12 @@ jungle_pyramid b @a <= 400
         .unwrap();
         match check(&q) {
             Feasibility::Infeasible(reasons) => {
-                assert!(reasons.iter().any(|r| r.contains("share one placement slot")),
-                    "reasons: {reasons:?}");
+                assert!(
+                    reasons
+                        .iter()
+                        .any(|r| r.contains("share one placement slot")),
+                    "reasons: {reasons:?}"
+                );
             }
             Feasibility::Ok => panic!("shared-slot conflict not detected"),
         }
@@ -275,8 +278,10 @@ swamp_hut c @b <= 500
         });
         match check(&q) {
             Feasibility::Infeasible(reasons) => {
-                assert!(reasons.iter().any(|r| r.contains("triangle-inequality")),
-                    "reasons: {reasons:?}");
+                assert!(
+                    reasons.iter().any(|r| r.contains("triangle-inequality")),
+                    "reasons: {reasons:?}"
+                );
             }
             Feasibility::Ok => panic!("triangle inequality not detected"),
         }
@@ -294,8 +299,10 @@ village b @a <= 300
         .unwrap();
         match check(&q) {
             Feasibility::Infeasible(reasons) => {
-                assert!(reasons.iter().any(|r| r.contains("same structure type")),
-                    "reasons: {reasons:?}");
+                assert!(
+                    reasons.iter().any(|r| r.contains("same structure type")),
+                    "reasons: {reasons:?}"
+                );
             }
             Feasibility::Ok => panic!("spacing bound not detected"),
         }

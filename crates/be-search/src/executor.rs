@@ -76,15 +76,8 @@ fn region_block_pos(
     }
     let s = version.structures.get(structure)?;
     let dist = s.distribution();
-    let (bx, bz) = structure_block_pos_streaming(
-        seed,
-        rx,
-        rz,
-        s.salt,
-        s.spacing,
-        s.chunk_range,
-        dist,
-    );
+    let (bx, bz) =
+        structure_block_pos_streaming(seed, rx, rz, s.salt, s.spacing, s.chunk_range, dist);
     let p = Pos { x: bx, z: bz };
     memo.map.insert((structure.to_string(), rx, rz), p);
     Some(p)
@@ -237,7 +230,8 @@ impl<'a> Engine<'a> {
         let (VarKind::Structure(s), _) = (&var.kind, ()) else {
             // Biome-presence probe: any region within the window; treat as origin-centred
             // region range from the max incident edge.
-            let max = self.query
+            let max = self
+                .query
                 .edges_incident(var_idx)
                 .map(|e| e.max)
                 .max()
@@ -424,7 +418,10 @@ desert_pyramid t1 @v1 in 600..1200
             seed: 0,
             positions: vec![Pos { x: 100_000, z: 0 }],
         };
-        assert!(!e.verify(&bad), "verify must reject an out-of-range candidate");
+        assert!(
+            !e.verify(&bad),
+            "verify must reject an out-of-range candidate"
+        );
     }
 
     #[test]

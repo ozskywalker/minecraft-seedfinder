@@ -23,7 +23,9 @@ async fn main() -> std::io::Result<()> {
     println!("seedfinder server listening on http://{addr}");
 
     // Open the browser once the port is bound, unless disabled.
-    let no_open = std::env::var("SEEDFINDER_NO_OPEN").map(|v| v == "1").unwrap_or(false);
+    let no_open = std::env::var("SEEDFINDER_NO_OPEN")
+        .map(|v| v == "1")
+        .unwrap_or(false);
     let on_ready: Option<Box<dyn FnOnce(SocketAddr) + Send>> = if no_open {
         None
     } else {

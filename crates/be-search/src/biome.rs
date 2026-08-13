@@ -271,7 +271,11 @@ mod tests {
             // The bound desert pyramid position must report desert (2).
             let p = cand.positions[0];
             let id = verify.cubiomes.biome_id_at(p.x as i32, p.z as i32).unwrap();
-            assert_eq!(id, 2, "desert pyramid at ({},{}) must be on desert", p.x, p.z);
+            assert_eq!(
+                id, 2,
+                "desert pyramid at ({},{}) must be on desert",
+                p.x, p.z
+            );
         }
     }
 
@@ -315,12 +319,17 @@ mod tests {
             plan: &plan,
         };
         let cands = engine.search_range(0, 50);
-        assert!(!cands.is_empty(), "village within 1000 of origin for some seed");
+        assert!(
+            !cands.is_empty(),
+            "village within 1000 of origin for some seed"
+        );
         for cand in &cands {
             let low = cand.seed & 0xFFFF_FFFF;
             let high = 0xABCD_0000u32;
             let full = ((high as u64) << 32) | low;
-            let full_cand = engine.evaluate_seed(full).expect("full seed binds same structure");
+            let full_cand = engine
+                .evaluate_seed(full)
+                .expect("full seed binds same structure");
             assert_eq!(full_cand.positions, cand.positions);
         }
     }

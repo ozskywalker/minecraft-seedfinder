@@ -18,9 +18,9 @@
 use std::process::ExitCode;
 use std::time::Duration;
 
-use be_biome::{BiomeQuery, CubiomesQuery, builtin_biome_map};
+use be_biome::{builtin_biome_map, BiomeQuery, CubiomesQuery};
 use be_corpus::corpus::BlockPos;
-use be_corpus::{BiomeSample, Corpus, Sample, Version, accuracy};
+use be_corpus::{accuracy, BiomeSample, Corpus, Sample, Version};
 use be_verify::{LocateResult, RemoteBedrock, RemoteBedrockConfig};
 
 const USAGE: &str = "usage:\n  be-corpus report <corpus.json> [tolerance]\n  be-corpus generate --version <v> --seeds <n> --host <host> [--user <user>] [--container <name>] [--out <corpus.json>]\n  be-corpus generate-biome --seeds <n> --host <host> [--user <user>] [--biomes <a,b,c>] [--no-biome-namespace] [--container <name>] [--out <corpus.json>]\n  be-corpus report-biome <corpus.json>";
@@ -46,10 +46,7 @@ fn cmd_report(args: &[String]) -> ExitCode {
         eprintln!("{USAGE}");
         return ExitCode::from(2);
     };
-    let tolerance: u64 = args
-        .get(1)
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(16);
+    let tolerance: u64 = args.get(1).and_then(|s| s.parse().ok()).unwrap_or(16);
 
     let corpus = match Corpus::load(corpus_path) {
         Ok(c) => c,
@@ -187,7 +184,9 @@ fn parse_kv<'a>(args: &'a [String], key: &str) -> Option<&'a String> {
 fn cmd_generate_biome(args: &[String]) -> ExitCode {
     let seeds = parse_kv(args, "--seeds").and_then(|s| s.parse::<u32>().ok());
     let host = parse_kv(args, "--host");
-    let user = parse_kv(args, "--user").map(String::as_str).unwrap_or("luser");
+    let user = parse_kv(args, "--user")
+        .map(String::as_str)
+        .unwrap_or("luser");
     let container = parse_kv(args, "--container");
     // Bedrock >= 1.21.100 requires the minecraft: biome namespace; older versions
     // (e.g. the 1.21.40 validation container) must send bare ids. Default to the

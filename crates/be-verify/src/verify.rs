@@ -15,6 +15,11 @@ pub fn locate_structure(
     id: &str,
 ) -> std::io::Result<Option<LocateResult>> {
     let lines = harness.command(&LocateCommand::structure(id).render(false))?;
-    let parsed: Vec<LocateResult> = lines.iter().map(|l| crate::locate::parse_locate_output(l)).collect();
-    Ok(parsed.into_iter().find(|r| !matches!(r, LocateResult::Unparseable(_))))
+    let parsed: Vec<LocateResult> = lines
+        .iter()
+        .map(|l| crate::locate::parse_locate_output(l))
+        .collect();
+    Ok(parsed
+        .into_iter()
+        .find(|r| !matches!(r, LocateResult::Unparseable(_))))
 }

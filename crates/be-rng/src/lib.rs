@@ -233,7 +233,10 @@ mod tests {
 
     #[test]
     fn full_mt_matches_second_reference_vector() {
-        for (seed, vec) in [(0xC0FFEEu32, &SEED_0XC0FFEE[..]), (0x12345678, &SEED_0X12345678[..])] {
+        for (seed, vec) in [
+            (0xC0FFEEu32, &SEED_0XC0FFEE[..]),
+            (0x12345678, &SEED_0X12345678[..]),
+        ] {
             let mut rng = MersenneTwister::new(seed);
             for (i, &expected) in vec.iter().enumerate() {
                 assert_eq!(rng.next_u32(), expected, "seed {seed:#x}, output {i}");

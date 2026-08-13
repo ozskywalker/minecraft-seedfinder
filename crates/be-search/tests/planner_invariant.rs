@@ -45,7 +45,15 @@ fn rec_brute(
     let var = &query.vars[var_idx];
     let VarKind::Structure(structure) = &var.kind else {
         positions[var_idx] = Some(Pos::origin());
-        let ok = rec_brute(query, version, seed, var_idx + 1, positions, memo, radius_regions);
+        let ok = rec_brute(
+            query,
+            version,
+            seed,
+            var_idx + 1,
+            positions,
+            memo,
+            radius_regions,
+        );
         if !ok {
             positions[var_idx] = None;
         }
@@ -73,7 +81,15 @@ fn rec_brute(
                 continue;
             }
             positions[var_idx] = Some(p);
-            if rec_brute(query, version, seed, var_idx + 1, positions, memo, radius_regions) {
+            if rec_brute(
+                query,
+                version,
+                seed,
+                var_idx + 1,
+                positions,
+                memo,
+                radius_regions,
+            ) {
                 return true;
             }
         }
@@ -151,7 +167,10 @@ desert_pyramid t1 @v1 in 600..1200
         .map(|low| low as u64)
         .collect();
 
-    assert_eq!(planned, brute, "planned and brute-force result sets must agree");
+    assert_eq!(
+        planned, brute,
+        "planned and brute-force result sets must agree"
+    );
 }
 
 /// Three-variable chain with relative edges only — same invariant.
@@ -170,7 +189,10 @@ jungle_pyramid c @b in 400..1000
         .map(|low| low as u64)
         .collect();
 
-    assert_eq!(planned, brute, "planned and brute-force result sets must agree");
+    assert_eq!(
+        planned, brute,
+        "planned and brute-force result sets must agree"
+    );
 }
 
 /// Every emitted planned result passes the independent verify() re-check.

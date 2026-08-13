@@ -6,7 +6,7 @@
 //! recorded level. It fails loudly if the generator drifts — the whole point of the
 //! corpus regression gate.
 
-use be_corpus::{Corpus, Version, accuracy};
+use be_corpus::{accuracy, Corpus, Version};
 
 const CORPUS_PATH: &str = "fixtures/corpus-1.21.40.json";
 const TOLERANCE: u64 = 16;
@@ -52,7 +52,14 @@ fn real_corpus_has_expected_structures() {
         .collect();
     // trial_chambers is intentionally absent (returns bounding-box centre; see
     // be-struct golden.rs). All anchor-returning structures should be present.
-    for id in ["village", "ancient_city", "pillager_outpost", "shipwreck", "buried_treasure", "ruined_portal"] {
+    for id in [
+        "village",
+        "ancient_city",
+        "pillager_outpost",
+        "shipwreck",
+        "buried_treasure",
+        "ruined_portal",
+    ] {
         assert!(structures.contains(&id), "corpus missing {id}");
     }
     assert!(!structures.contains(&"trial_chambers"));
@@ -74,7 +81,7 @@ fn real_corpus_has_expected_structures() {
 /// agreement so any regression fails loudly.
 #[test]
 fn biome_parity_gate_is_green() {
-    use be_biome::{BiomeQuery, CubiomesQuery, builtin_biome_map};
+    use be_biome::{builtin_biome_map, BiomeQuery, CubiomesQuery};
 
     let base = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .ancestors()
