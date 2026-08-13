@@ -97,6 +97,12 @@ what an ephemeral container with `LEVEL_SEED` achieves.
 
 - This is a Cargo workspace (see `CLAUDE.md`); `cargo test --workspace` and
   `cargo clippy --workspace --all-targets` must stay green.
+- **Self-build entry point:** `.\build.ps1` at the repo root is the convenient way to
+  build from source on Windows. Default produces the production single-`.exe`
+  (`dist\seedfinder.exe`, UI embedded — delegates to `scripts/build-release.ps1`). It
+  also offers `-Dev` (build UI + debug server for local iteration) and `-Test` (run the
+  Rust workspace tests, UI tests, and UI typecheck). Requires Rust + Node.js (>=20.19)
+  on the build machine; the release exe needs neither.
 - Ground-truth validation must never be faked. The project's Phase 0 gate (PLAN §6/§7)
   requires generator predictions verified against the real Bedrock server before the
   search engine is trusted. Use the real servers above; record real captured output as
