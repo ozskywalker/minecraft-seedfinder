@@ -423,6 +423,9 @@ mod tests {
 
     #[tokio::test]
     async fn index_serves_html() {
+        if !assets::EMBEDDED {
+            return; // skip when the UI isn't embedded (clean/dev checkout; CI rust job)
+        }
         use axum::body::Body;
         use axum::http::Request;
         use tower::ServiceExt;
