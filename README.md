@@ -1,5 +1,8 @@
 # Bedrock Seedfinder
 
+[![CI](https://github.com/ozskywalker/minecraft-seedfinder/actions/workflows/ci.yml/badge.svg)](https://github.com/ozskywalker/minecraft-seedfinder/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A tool for finding **Minecraft Bedrock Edition** world seeds that match a *constraint
 graph*: structure positions, relative distances between structures, and biome gates.
 For example, "a desert pyramid within 600–1200 blocks of a village, whose anchor biome
