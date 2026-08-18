@@ -21,10 +21,10 @@ jobs:
     name: Build Windows exe + publish release
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -55,14 +55,14 @@ jobs:
           Copy-Item target\release\server.exe dist\seedfinder.exe -Force
 
       - name: Upload exe as build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: seedfinder-windows-x64
           path: dist/seedfinder.exe
           if-no-files-found: error
 
       - name: Create GitHub Release and attach exe
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           files: dist/seedfinder.exe
