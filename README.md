@@ -12,7 +12,8 @@ working slice and how to build/run it.
 > **Status:** Phases 0–5 are implemented and tested. Structure placement and the biome
 > gate are **validated against real Bedrock servers** (see
 > [Validation](#validation--ground-truth) below). Phase 6 (optimization) has begun with
-> seed-lookup speedups (see `PLAN.md`).
+> seed-lookup speedups — allocation-light primitives and SIMD batching across seeds (see
+> `PLAN.md`).
 
 ---
 
