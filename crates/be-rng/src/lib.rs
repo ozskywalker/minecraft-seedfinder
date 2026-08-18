@@ -136,24 +136,51 @@ pub fn next_int(bound: u32, raw: u32) -> u32 {
 /// This is the highest-value optimization in the project, and the plan mandates a
 /// property test proving it equals the full `MersenneTwister` for the first `n`
 /// outputs across many seeds.
+///
+/// The zero-alloc [`first_n_into`] is the hot-path primitive (it fills a caller-owned
+/// stack buffer, so the seed-lookup sweep performs no heap allocation per call); this
+/// `Vec`-returning form is kept as a convenience and as the reference the property
+/// tests target.
 pub fn first_n(seed: u32, n: usize) -> Vec<u32> {
+    let mut out = vec![0u32; n];
+    first_n_into(seed, n, &mut out);
+    out
+}
+
+/// The size of the fixed stack buffer [`first_n_into`] requires (one more than the
+/// largest supported `n`, so window `mt[0..=n]` always fits).
+pub const STREAM_BUF: usize = MAX_STREAMING_N + 1;
+
+/// Zero-alloc streaming twist: write the first `n` tempered outputs of MT19937 seeded
+/// with `seed` into `out[0..n]` and return `&out[..n]`.
+///
+/// `n` must be `<= MAX_STREAMING_N` and `out.len() >= n`. The caller supplies a fixed
+/// stack buffer (e.g. `let mut buf = [0u32; STREAM_BUF]`), so no heap allocation
+/// happens on the seed-lookup hot path — this is the difference that makes the Phase A
+/// sweep fast. Results are bit-identical to [`first_n`] / the full `MersenneTwister`.
+#[inline]
+pub fn first_n_into(seed: u32, n: usize, out: &mut [u32]) -> &[u32] {
     assert!(
         n <= MAX_STREAMING_N,
-        "first_n supports n <= {} (got {n})",
+        "first_n_into supports n <= {} (got {n})",
         MAX_STREAMING_N
     );
+    assert!(out.len() >= n, "out buffer too small: len {} < n {n}", out.len());
 
-    // Window A: mt[0..=n]
-    let mut a = vec![0u32; n + 1];
+    // Window A: mt[0..=n]; window B: mt[397..=397+n]. Both fit in fixed stack arrays;
+    // only the touched entries are written, but declaring them const-sized lets the
+    // compiler keep them in registers/stack with no heap traffic.
+    let mut a = [0u32; MAX_STREAMING_N + 1];
+    let mut b = [0u32; MAX_STREAMING_N + 1];
+
     a[0] = seed;
     let mut cur = seed;
-    for (i, slot) in a.iter_mut().enumerate().skip(1) {
-        cur = init_step(cur, i);
+    for (i, slot) in a[1..=n].iter_mut().enumerate() {
+        cur = init_step(cur, i + 1);
         *slot = cur;
     }
     // `cur` is now mt[n]. Continue rolling forward to mt[397+n], capturing window B:
     // mt[397..=397+n] (b[i] == mt[397 + i]).
-    let mut b = vec![0u32; n + 1];
     for i in (n + 1)..=(n + M) {
         cur = init_step(cur, i);
         if i >= M {
@@ -162,14 +189,13 @@ pub fn first_n(seed: u32, n: usize) -> Vec<u32> {
     }
 
     // Twist window A against window B to produce the first n outputs.
-    let mut out = Vec::with_capacity(n);
     for i in 0..n {
         let y = (a[i] & UPPER_MASK) | (a[i + 1] & LOWER_MASK);
         let mag = if y & 1 == 1 { MATRIX_A } else { 0 };
         let raw = b[i] ^ (y >> 1) ^ mag;
-        out.push(temper(raw));
+        out[i] = temper(raw);
     }
-    out
+    &out[..n]
 }
 
 #[cfg(test)]
@@ -294,10 +320,50 @@ mod tests {
         }
     }
 
+    /// The zero-alloc `first_n_into` must produce bit-identical output to the
+    /// `Vec`-returning `first_n` for every n and seed (they share one implementation,
+    /// but this pins that the stack-buffer path equals the reference).
+    #[test]
+    fn first_n_into_matches_first_n() {
+        let seeds = [0u32, 1, 5489, 0xC0FFEE, 0xFFFF_FFFF, 0x8000_0000];
+        for &seed in &seeds {
+            for n in 1..=8usize {
+                let expected = first_n(seed, n);
+                let mut buf = [0u32; STREAM_BUF];
+                let got = first_n_into(seed, n, &mut buf);
+                assert_eq!(
+                    got, expected.as_slice(),
+                    "seed {seed:#010x} n {n}: first_n_into diverged"
+                );
+            }
+        }
+    }
+
+    /// `first_n_into` at the streaming limit matches the full generator.
+    #[test]
+    fn first_n_into_matches_full_at_n_227() {
+        let mut buf = [0u32; STREAM_BUF];
+        for &seed in &[0u32, 5489, 0xDEAD_BEEF] {
+            let full: Vec<u32> = {
+                let mut rng = MersenneTwister::new(seed);
+                (0..MAX_STREAMING_N).map(|_| rng.next_u32()).collect()
+            };
+            let got = first_n_into(seed, MAX_STREAMING_N, &mut buf);
+            assert_eq!(got, full.as_slice(), "seed {seed:#010x}");
+        }
+    }
+
     #[test]
     #[should_panic(expected = "n <= 227")]
     fn first_n_rejects_too_large_n() {
         let _ = first_n(0, 228);
+    }
+
+    #[test]
+    #[should_panic(expected = "n <= 227")]
+    fn first_n_into_rejects_too_large_n() {
+        let mut buf = [0u32; STREAM_BUF];
+        let _ = first_n_into(0, 228, &mut buf);
     }
 
     /// `mNextInt` power-of-two path uses a mask (`next & (bound-1)`).

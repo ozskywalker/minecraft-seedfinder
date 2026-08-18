@@ -4,3 +4,6 @@
 # Production build artifacts (single-exe deliverable)
 /dist/
 /seedfinder.exe
+
+# opencode agent session/config state (tooling, not project code)
+/.opencode/

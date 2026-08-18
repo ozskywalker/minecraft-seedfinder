@@ -11,7 +11,7 @@
 //! blockPos = ((regX*spacing + chunkInRegionX) << 4) + 8
 //! ```
 
-use be_rng::{first_n, MersenneTwister};
+use be_rng::{first_n_into, MersenneTwister, STREAM_BUF};
 
 use crate::region::region_seed;
 
@@ -69,6 +69,10 @@ pub fn structure_block_pos(
 /// Streaming variant of [`structure_block_pos`] that uses the memory-lean
 /// `first_n` twist instead of the full 624-word generator. Must produce identical
 /// results (proven by property test against the full generator).
+///
+/// Hot path: uses a fixed stack buffer via [`be_rng::first_n_into`], so computing a
+/// structure position performs **no heap allocation** — the seed-lookup sweep calls
+/// this once per (structure, region) per seed.
 pub fn structure_block_pos_streaming(
     world_seed: u64,
     reg_x: i64,
@@ -79,17 +83,18 @@ pub fn structure_block_pos_streaming(
     dist: Distribution,
 ) -> (i64, i64) {
     let rseed = region_seed(world_seed, reg_x, reg_z, salt) as u32;
+    let mut buf = [0u32; STREAM_BUF];
 
     let (offset_x, offset_z) = match dist {
         Distribution::Linear => {
-            let raw = first_n(rseed, 2);
+            let raw = first_n_into(rseed, 2, &mut buf);
             (
                 be_rng::next_int(chunk_range, raw[0]),
                 be_rng::next_int(chunk_range, raw[1]),
             )
         }
         Distribution::Triangular => {
-            let raw = first_n(rseed, 4);
+            let raw = first_n_into(rseed, 4, &mut buf);
             let x1 = be_rng::next_int(chunk_range, raw[0]);
             let x2 = be_rng::next_int(chunk_range, raw[1]);
             let z1 = be_rng::next_int(chunk_range, raw[2]);

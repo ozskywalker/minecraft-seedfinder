@@ -21,7 +21,7 @@ phase sections below describe design intent and are annotated with completion st
 | **3** — `cubiomes-sys` + `be-biome` | ✅ **Complete; biome validation GREEN.** FFI, Bedrock ID map, query/gate/grid all built and green, and cubiomes output now **validated 100%** against a matched-version 1.21.40 Bedrock server (and the live 1.26.43 server). |
 | **4** — `be-search` | ✅ **Complete.** Query IR + text DSL (round-trip), feasibility pre-check with reasons (shared-slot / triangle-inequality / spacing), rarest-first join planner + adaptive mode, nested-loop executor with per-seed memoisation + rayon, invariant re-check, and a streaming `search_range_visit` seam. |
 | **5** — `server` + `ui` | ✅ **Complete.** `crates/server` (axum) exposes `POST /api/search` (SSE stream of mode → results-as-found → done, with feasibility reasons surfaced), `GET /api/tile/{seed}/{tx}/{tz}/{lod}` (server-rendered 512-block biome PNG tiles with LRU cache + LOD), `GET /api/catalog` (structure list for the UI), and serves the built UI from `ui/dist`. `ui/` (Vite + React + TS + Tailwind) is a pan/zoom canvas map with progressive LOD, precision rebasing and declustered structure markers, a text DSL editor driving the SSE stream, an ordered route builder that round-trips to/from DSL, a results list, and URL-encoded shareable view/seed/query state. 13 server tests + 31 vitest tests green. **Remaining:** §7 Phase 5 acceptance runs (open browser, confirm mode selection, VERIFIED badges) — these need the canvas UI to be exercised in a real browser, which is manual. |
-| **6** — Optimization | ⬜ **Not started.** |
+| **6** — Optimization | 🚧 **Started (partial).** Seed-lookup speedups landed: zero-alloc streaming MT (`first_n_into`), allocation-light executor sweep (~1.3–1.4× faster Phase A; measured via `be-rng`/`be-search` example benches). Remaining: SIMD batching across seeds, constellation result caching, GPU compute (see §6). |
 
 **Measured accuracy (from `fixtures/corpus-1.21.40.json`,
 `fixtures/biome-corpus-1.21.40.json` and `fixtures/biome-corpus-1.21.40.bds.json`):**
@@ -76,8 +76,10 @@ phase sections below describe design intent and are annotated with completion st
   the run (per the at-most-two-containers rule).
 
 **Next work:** Phase 5 §7 acceptance runs in a real browser (mode selection, VERIFIED
-badges, map rendering) which are manual, then Phase 6 optimization if a measured need
-arises. The 1.21.40 biome-validation server was stood up (§4), the biome gate is GREEN
+badges, map rendering) which are manual, then the remaining Phase 6 optimization levers
+(SIMD batching across seeds — the biggest win, since the Phase A hot path is now dominated
+by the sequential MT19937 init chain — constellation result caching, GPU compute). The
+1.21.40 biome-validation server was stood up (§4), the biome gate is GREEN
 at 100%, and the ephemeral container removed — Phase B biome gates are built on validated
 output.
 

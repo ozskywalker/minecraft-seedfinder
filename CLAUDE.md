@@ -12,8 +12,8 @@ search engine. `AGENTS.md` covers remote-server management for ground-truth vali
 commands and the honesty caveats that still apply.
 
 **Phases 0–5 are complete** (structure RNG/placement, verification harness + corpus,
-biome FFI, search engine + DSL + CLI, server + web UI). Phase 6 (optimization) has not
-started. **The Phase 0 gate has passed**: both structure placement and the biome gate are
+biome FFI, search engine + DSL + CLI, server + web UI). Phase 6 (optimization) has begun
+with seed-lookup speedups. **The Phase 0 gate has passed**: both structure placement and the biome gate are
 validated GREEN against real Bedrock servers (see "Validation status" below) — results
 from this code may be presented as accurate for the validated scope, subject to the open
 caveats in that section.
@@ -27,6 +27,10 @@ caveats in that section.
     first `n` tempered outputs without materializing the 624-word array (working set
     `2(n+1)` words). Valid for `n <= 227`. This is the optimization the property test
     guards.
+  - `first_n_into(seed, n, &mut buf)` — the **zero-alloc** variant that fills a
+    caller-supplied stack buffer (`STREAM_BUF`) instead of returning a `Vec`. This is
+    the hot-path primitive used by structure placement, so the seed-lookup sweep does no
+    heap allocation per call. Bit-identical to `first_n` (property-tested).
   - `next_int(bound, raw)` / `next_int(bound)` — `mNextInt`: mask for power-of-two
     bounds, plain **biased** modulo otherwise.
 - **`crates/be-struct`** — structure placement math:
@@ -84,7 +88,10 @@ caveats in that section.
   - `planner` — rarest-first join planner with an adaptive mode.
   - `executor` — nested-loop executor with per-seed memoisation, `rayon` parallelism,
     invariant re-checking, and a streaming `search_range_visit` seam (Phase A over the
-    low 32 bits, Phase B biome resolution over the high 32 bits).
+    low 32 bits, Phase B biome resolution over the high 32 bits). The sweep is
+    allocation-light: it reuses the per-seed `positions`/memo buffers across seeds,
+    keys the memo by borrowed `&str` (no `String` alloc), and hoists the structure-params
+    lookup out of the per-region loop.
   - `main` — the `be-search` CLI (`feasibility`, `search` subcommands).
 - **`crates/server`** — axum REST + SSE API, and the deliverable entry point:
   - `POST /api/search` — SSE stream of `mode` → `result`s (as found) → `done`, with
@@ -206,6 +213,7 @@ Seed searching is implemented per `PLAN.md`. Key model to remember:
 - The text DSL (`be-search::dsl`) is the single source of truth parsed by both the CLI
   and the server/UI's route builder — keep them sharing that parser rather than growing
   a second implementation.
-- **Not yet implemented**: Phase 6 optimization work (the ledger in `PLAN.md` §"Current
-  status" is authoritative on what that entails), and running the Phase C real-server
-  verification of individual search-result seeds in CI.
+- **Partially implemented**: Phase 6 optimization (seed-lookup allocation speedups are
+  in; the remaining Phase 6 levers — SIMD batching across seeds, constellation result
+  caching, GPU compute — are not). **Not yet implemented**: running the Phase C
+  real-server verification of individual search-result seeds in CI.

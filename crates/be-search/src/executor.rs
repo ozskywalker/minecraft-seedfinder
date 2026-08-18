@@ -21,7 +21,7 @@ use std::collections::HashMap;
 
 use be_struct::placement::structure_block_pos_streaming;
 use be_struct::region::floor_div;
-use be_struct::Version;
+use be_struct::{Structure, Version};
 
 use crate::ir::{Anchor, Query, VarKind};
 use crate::planner::Plan;
@@ -56,31 +56,39 @@ pub struct Candidate {
 }
 
 /// A per-(structure,region) memo cache, scoped to a single seed's evaluation.
+///
+/// Keyed by a borrowed structure name (borrowed from the query/version, which outlive
+/// the seed's evaluation) so the hot path performs **no `String` allocation** per
+/// lookup — the `String`-keyed alternative cost a heap alloc on every region probe.
 #[derive(Default)]
-struct SeedMemo {
-    // key: (structure_key, rx, rz) → block pos.
-    map: HashMap<(String, i64, i64), Pos>,
+struct SeedMemo<'s> {
+    // key: (structure name, rx, rz) → block pos.
+    map: HashMap<(&'s str, i64, i64), Pos>,
 }
 
 /// Compute the block position of a structure in a region, with memoisation.
-fn region_block_pos(
-    version: &Version,
+///
+/// `name` (the version-table key, borrowed from the query/version) and the resolved
+/// `structure` params are supplied by the caller — the caller hoists the
+/// `version.structures` lookup out of the per-region loop, so this hot path does no
+/// map lookup and no allocation on the memo-miss path.
+fn region_block_pos<'s>(
     seed: u64,
-    structure: &str,
+    name: &'s str,
+    s: &Structure,
     rx: i64,
     rz: i64,
-    memo: &mut SeedMemo,
-) -> Option<Pos> {
-    if let Some(p) = memo.map.get(&(structure.to_string(), rx, rz)) {
-        return Some(*p);
+    memo: &mut SeedMemo<'s>,
+) -> Pos {
+    if let Some(p) = memo.map.get(&(name, rx, rz)) {
+        return *p;
     }
-    let s = version.structures.get(structure)?;
     let dist = s.distribution();
     let (bx, bz) =
         structure_block_pos_streaming(seed, rx, rz, s.salt, s.spacing, s.chunk_range, dist);
     let p = Pos { x: bx, z: bz };
-    memo.map.insert((structure.to_string(), rx, rz), p);
-    Some(p)
+    memo.map.insert((name, rx, rz), p);
+    p
 }
 
 /// The engine: holds the query, version and plan, and can search seed ranges.
@@ -99,9 +107,15 @@ impl<'a> Engine<'a> {
     /// on `seed & 0xFFFF_FFFF`, so we iterate `start..end` as the low word.
     pub fn search_range(&self, start: u32, end: u32) -> Vec<Candidate> {
         let mut out = Vec::new();
+        let n = self.query.vars.len();
+        // Reuse the per-seed buffers across the whole sweep so no heap allocation
+        // happens per seed (the hot path). `evaluate_seed` alone allocates a fresh
+        // positions Vec + memo HashMap for every seed, which is pure overhead.
+        let mut positions = vec![None; n];
+        let mut memo: SeedMemo<'a> = SeedMemo::default();
         for low in start..end {
             let seed = low as u64;
-            if let Some(cand) = self.evaluate_seed(seed) {
+            if let Some(cand) = self.evaluate_seed_buffered(seed, &mut positions, &mut memo) {
                 if self.verify(&cand) {
                     out.push(cand);
                 }
@@ -140,9 +154,12 @@ impl<'a> Engine<'a> {
     where
         F: FnMut(&Candidate),
     {
+        let n = self.query.vars.len();
+        let mut positions = vec![None; n];
+        let mut memo: SeedMemo<'a> = SeedMemo::default();
         for low in start..end {
             let seed = low as u64;
-            if let Some(cand) = self.evaluate_seed(seed) {
+            if let Some(cand) = self.evaluate_seed_buffered(seed, &mut positions, &mut memo) {
                 if self.verify(&cand) {
                     visit(&cand);
                 }
@@ -155,11 +172,27 @@ impl<'a> Engine<'a> {
     pub fn evaluate_seed(&self, seed: u64) -> Option<Candidate> {
         let n = self.query.vars.len();
         let mut positions: Vec<Option<Pos>> = vec![None; n];
-        let mut memo = SeedMemo::default();
-        if self.bind(seed, 0, &mut positions, &mut memo) {
+        let mut memo: SeedMemo<'a> = SeedMemo::default();
+        self.evaluate_seed_buffered(seed, &mut positions, &mut memo)
+    }
+
+    /// `evaluate_seed` with caller-supplied, reusable buffers. The buffers are reset in
+    /// place (no reallocation), which is what lets a whole sweep avoid per-seed heap
+    /// churn. Results are identical to `evaluate_seed`.
+    fn evaluate_seed_buffered(
+        &self,
+        seed: u64,
+        positions: &mut Vec<Option<Pos>>,
+        memo: &mut SeedMemo<'a>,
+    ) -> Option<Candidate> {
+        for slot in positions.iter_mut() {
+            *slot = None;
+        }
+        memo.map.clear();
+        if self.bind(seed, 0, positions, memo) {
             Some(Candidate {
                 seed,
-                positions: positions.into_iter().map(|p| p.expect("bound")).collect(),
+                positions: positions.iter().map(|p| p.expect("bound")).collect(),
             })
         } else {
             None
@@ -167,13 +200,16 @@ impl<'a> Engine<'a> {
     }
 
     /// Recursive nested-loop binding over `plan.order[idx..]`.
-    fn bind(
+    fn bind<'s>(
         &self,
         seed: u64,
         idx: usize,
         positions: &mut Vec<Option<Pos>>,
-        memo: &mut SeedMemo,
-    ) -> bool {
+        memo: &mut SeedMemo<'s>,
+    ) -> bool
+    where
+        'a: 's,
+    {
         if idx == self.plan.order.len() {
             return true; // all bound
         }
@@ -185,27 +221,32 @@ impl<'a> Engine<'a> {
             return false;
         };
 
+        // Resolve the structure's placement params once per variable, not once per
+        // region — the structure never changes across the window, and the BTreeMap
+        // lookup would otherwise repeat for every region probe.
+        let resolved_structure = match &var.kind {
+            VarKind::Structure(s) => match self.version.structures.get(s) {
+                Some(st) => Some((s.as_str(), st)),
+                None => return false, // unknown structure → this var can never bind
+            },
+            VarKind::BiomePresence { .. } => None,
+        };
+
         for (rx, rz) in window {
-            // Compute block pos (structure) for this region.
-            let structure = match &var.kind {
-                VarKind::Structure(s) => s,
-                // Biome-presence probes are resolved in Phase B; structurally they
-                // bind at any position within the window. Bind at window centre for
-                // structural purposes (Phase B re-checks). For now, treat as satisfied
-                // by any region — emit centre.
-                VarKind::BiomePresence { .. } => {
-                    positions[var_idx] = Some(Pos::origin());
-                    if self.bind(seed, idx + 1, positions, memo) {
-                        return true;
-                    }
-                    positions[var_idx] = None;
-                    return false;
+            // Biome-presence probes are resolved in Phase B; structurally they
+            // bind at any position within the window. Bind at window centre for
+            // structural purposes (Phase B re-checks). For now, treat as satisfied
+            // by any region — emit centre.
+            let Some((name, structure)) = resolved_structure else {
+                positions[var_idx] = Some(Pos::origin());
+                if self.bind(seed, idx + 1, positions, memo) {
+                    return true;
                 }
+                positions[var_idx] = None;
+                return false;
             };
 
-            let Some(p) = region_block_pos(self.version, seed, structure, rx, rz, memo) else {
-                continue;
-            };
+            let p = region_block_pos(seed, name, structure, rx, rz, memo);
 
             // Check all edges from this var to already-bound anchors.
             if !self.satisfies(var_idx, &p, positions) {
@@ -433,9 +474,10 @@ desert_pyramid t1 @v1 in 600..1200
     #[test]
     fn memo_caches_region_positions() {
         let version = Version::builtin_1_21_40();
+        let s = &version.structures["village"];
         let mut memo = SeedMemo::default();
-        let p1 = region_block_pos(&version, 42, "village", 1, 1, &mut memo).unwrap();
-        let p2 = region_block_pos(&version, 42, "village", 1, 1, &mut memo).unwrap();
+        let p1 = region_block_pos(42, "village", s, 1, 1, &mut memo);
+        let p2 = region_block_pos(42, "village", s, 1, 1, &mut memo);
         assert_eq!(p1, p2);
         assert_eq!(memo.map.len(), 1);
     }
