@@ -7,7 +7,7 @@
 # Usage:
 #   .\build.ps1              # release exe -> dist\seedfinder.exe  (UI baked in)
 #   .\build.ps1 -Dev         # build UI + debug server for local iteration
-#   .\build.ps1 -Test        # run Rust workspace tests + UI tests + typecheck
+#   .\build.ps1 -Test        # run fmt/clippy/tests + UI tests + typecheck (mirrors CI gates)
 #   .\build.ps1 -Help        # this help
 #
 # Requires on the BUILD machine: a Rust toolchain and Node.js (>=20.19). The end user
@@ -26,7 +26,7 @@ build.ps1 - easy self-build for the Bedrock Seedfinder
 
   .\build.ps1              release exe -> dist\seedfinder.exe (UI embedded, auto-opens browser)
   .\build.ps1 -Dev         build the web UI + a debug server for local iteration
-  .\build.ps1 -Test        run Rust workspace tests, UI tests, and the UI typecheck
+  .\build.ps1 -Test        run Rust fmt/clippy/tests, UI tests, and the UI typecheck
   .\build.ps1 -Help        show this help
 
 Requires Rust + Node.js (>=20.19) on this machine. The release exe needs neither.
@@ -57,6 +57,17 @@ function Build-WebUI {
 
 # --- -Test: run the full test suite + typecheck -------------------------------------
 if ($Test) {
+    # Mirror the CI Rust job's gates so local -Test catches what CI catches.
+    Write-Host "==> Rust format check ..." -ForegroundColor Cyan
+    Push-Location $root
+    try { cargo fmt --all -- --check } finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw "cargo fmt check failed (exit $LASTEXITCODE)" }
+
+    Write-Host "==> Rust clippy (deny warnings) ..." -ForegroundColor Cyan
+    Push-Location $root
+    try { cargo clippy --workspace --all-targets -- -D warnings } finally { Pop-Location }
+    if ($LASTEXITCODE -ne 0) { throw "cargo clippy failed (exit $LASTEXITCODE)" }
+
     Write-Host "==> Rust workspace tests ..." -ForegroundColor Cyan
     Push-Location $root
     try { cargo test --workspace } finally { Pop-Location }
