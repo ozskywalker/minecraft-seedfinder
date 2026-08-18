@@ -146,38 +146,110 @@
     },
     {
       "version": "1.21.40",
-      "seed": 4,
+      "seed": 5,
       "structure": "desert_pyramid",
       "observed": {
-        "x": -472,
-        "z": -152
+        "x": -1016,
+        "z": -984
       }
     },
     {
       "version": "1.21.40",
-      "seed": 4,
+      "seed": 5,
       "structure": "igloo",
       "observed": {
-        "x": -472,
-        "z": -152
+        "x": -1016,
+        "z": -984
       }
     },
     {
       "version": "1.21.40",
-      "seed": 4,
+      "seed": 5,
       "structure": "jungle_pyramid",
       "observed": {
-        "x": -472,
-        "z": -152
+        "x": -1016,
+        "z": -984
       }
     },
     {
       "version": "1.21.40",
-      "seed": 4,
+      "seed": 5,
       "structure": "swamp_hut",
       "observed": {
-        "x": -472,
-        "z": -152
+        "x": -1016,
+        "z": -984
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 6,
+      "structure": "desert_pyramid",
+      "observed": {
+        "x": -328,
+        "z": -232
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 6,
+      "structure": "igloo",
+      "observed": {
+        "x": -328,
+        "z": -232
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 6,
+      "structure": "jungle_pyramid",
+      "observed": {
+        "x": -328,
+        "z": -232
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 6,
+      "structure": "swamp_hut",
+      "observed": {
+        "x": -328,
+        "z": -232
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 7,
+      "structure": "desert_pyramid",
+      "observed": {
+        "x": 760,
+        "z": 760
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 7,
+      "structure": "igloo",
+      "observed": {
+        "x": 760,
+        "z": 760
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 7,
+      "structure": "jungle_pyramid",
+      "observed": {
+        "x": 760,
+        "z": 760
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 7,
+      "structure": "swamp_hut",
+      "observed": {
+        "x": 760,
+        "z": 760
       }
     }
   ],

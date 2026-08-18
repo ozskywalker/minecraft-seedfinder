@@ -172,6 +172,17 @@ cargo run -p be-search -- search 'village v1 @origin <= 800' --no-biomes
 cargo run -p be-corpus -- report fixtures/corpus-1.21.40.json
 ```
 
+Phase C — verify a returned search-result seed against the real Bedrock server (needs a
+live server, see `AGENTS.md`). The search CLI's `--seeds-only` pipes straight in:
+
+```bash
+# Search, take a handful of seeds, verify each against the live server (one fresh world
+# per seed; 0 FAIL => structurally consistent with the game).
+cargo run -p be-search -- search 'village v1 @origin <= 800
+desert_pyramid d1 @v1 in 400..1200' --low-end 2000 --seeds-only \
+  | cargo run -p be-corpus -- verify-seeds --host <host> --stdin
+```
+
 ## The query DSL
 
 One statement per line (`#` comments and blank lines ignored):
@@ -202,21 +213,33 @@ same engine in both the CLI and the server.
 Ground truth is **real, captured, and never faked** — it comes from real Bedrock servers
 running as Docker containers on a remote host (see `AGENTS.md` for management).
 
-- **Structure placement: 100%** (6 structures × 5 seeds) — `be-struct` predicts the real
-  BDS server's `/locate structure` output exactly, across the 1.21.x–1.26.43 range.
+- **Structure placement: 100%** (7 anchor structures across 10 seeds, exact match) —
+  `be-struct` predicts the real BDS server's `/locate structure` output exactly, across
+  the 1.21.x–1.26.43 range (`fixtures/corpus-1.21.40.json`, widened 2026-08-18). The
+  shared-salt scattered set (7 seeds × 4 ids) is also 100%.
 - **Biome gate: GREEN at 100%** for the corpus's surface biomes — cubiomes matches the
   real BDS `/locate biome` output at every observed coordinate, on both a matched-version
   **1.21.40** server and the live **1.26.43** server. (An earlier "18.2%" reading was a
   y/z argument-order bug in the cubiomes bridge, now fixed and regression-tested.)
+- **Phase C (2026-08-18):** `be-corpus verify-seeds` ran on 5 real search-result seeds
+  against the live server — **0 FAIL**; every parseable `/locate` observation matched.
 
 Remaining honesty caveats (also tracked in `PLAN.md` §8):
 
 - Biome parity is **empirically observed, not source-proven** — validated for the
   corpus's surface biomes only; other biomes/edge cases are unproven.
+- **`woodland_mansion` is live-validated (2026-08-18).** Its `/locate` id is **`mansion`**
+  (not `woodland_mansion`, which makes `/locate` return "No valid structure found"); with
+  the correct id the model's placement matches the live server at 100% (7/7 resolved
+  seeds). The earlier "no mansion" finding was a wrong-id artifact. Remaining UNVERIFIED:
+  **`ocean_ruin`** (never resolves) and **`trail_ruins`** (returns a bounding-box
+  centre).
 - The shared-salt "scattered" set and a few unresolved source conflicts (e.g. trial
-  chambers distribution) are flagged `[UNCONFIRMED]` in the version tables.
+  chambers distribution, scattered-type resolution) are flagged `[UNCONFIRMED]` in the
+  version tables.
 - Ground-truth verification of individual *search results* (Phase C, spawning a real
-  server per finalist seed) is wired but not run in CI — it needs a live Bedrock server.
+  server per finalist seed) is wired and was run 2026-08-18 (0 FAIL), but is not in CI —
+  it needs a live Bedrock server.
 
 ## License
 

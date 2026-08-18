@@ -47,24 +47,6 @@
     },
     {
       "version": "1.21.40",
-      "seed": 0,
-      "structure": "ruined_portal",
-      "observed": {
-        "x": 296,
-        "z": 376
-      }
-    },
-    {
-      "version": "1.21.40",
-      "seed": 1,
-      "structure": "village",
-      "observed": {
-        "x": 152,
-        "z": 808
-      }
-    },
-    {
-      "version": "1.21.40",
       "seed": 1,
       "structure": "ancient_city",
       "observed": {
@@ -79,15 +61,6 @@
       "observed": {
         "x": 840,
         "z": 424
-      }
-    },
-    {
-      "version": "1.21.40",
-      "seed": 1,
-      "structure": "shipwreck",
-      "observed": {
-        "x": -184,
-        "z": -136
       }
     },
     {
@@ -129,24 +102,6 @@
     {
       "version": "1.21.40",
       "seed": 2,
-      "structure": "pillager_outpost",
-      "observed": {
-        "x": -840,
-        "z": -856
-      }
-    },
-    {
-      "version": "1.21.40",
-      "seed": 2,
-      "structure": "shipwreck",
-      "observed": {
-        "x": 152,
-        "z": 632
-      }
-    },
-    {
-      "version": "1.21.40",
-      "seed": 2,
       "structure": "buried_treasure",
       "observed": {
         "x": -56,
@@ -169,15 +124,6 @@
       "observed": {
         "x": 680,
         "z": 184
-      }
-    },
-    {
-      "version": "1.21.40",
-      "seed": 3,
-      "structure": "ancient_city",
-      "observed": {
-        "x": -1032,
-        "z": 1288
       }
     },
     {
@@ -219,15 +165,6 @@
     {
       "version": "1.21.40",
       "seed": 4,
-      "structure": "village",
-      "observed": {
-        "x": -360,
-        "z": -312
-      }
-    },
-    {
-      "version": "1.21.40",
-      "seed": 4,
       "structure": "ancient_city",
       "observed": {
         "x": -2680,
@@ -255,20 +192,237 @@
     {
       "version": "1.21.40",
       "seed": 4,
-      "structure": "buried_treasure",
-      "observed": {
-        "x": -120,
-        "z": -248
-      }
-    },
-    {
-      "version": "1.21.40",
-      "seed": 4,
       "structure": "ruined_portal",
       "observed": {
         "x": 24,
         "z": 200
       }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 5,
+      "structure": "village",
+      "observed": {
+        "x": 232,
+        "z": 680
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 5,
+      "structure": "ancient_city",
+      "observed": {
+        "x": 936,
+        "z": -1400
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 5,
+      "structure": "pillager_outpost",
+      "observed": {
+        "x": 472,
+        "z": 696
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 5,
+      "structure": "shipwreck",
+      "observed": {
+        "x": -328,
+        "z": 488
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 5,
+      "structure": "ruined_portal",
+      "observed": {
+        "x": 152,
+        "z": 392
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 6,
+      "structure": "village",
+      "observed": {
+        "x": -504,
+        "z": 744
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 6,
+      "structure": "ancient_city",
+      "observed": {
+        "x": 856,
+        "z": 120
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 6,
+      "structure": "shipwreck",
+      "observed": {
+        "x": -232,
+        "z": -376
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 6,
+      "structure": "buried_treasure",
+      "observed": {
+        "x": -184,
+        "z": 216
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 6,
+      "structure": "ruined_portal",
+      "observed": {
+        "x": 344,
+        "z": 72
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 7,
+      "structure": "village",
+      "observed": {
+        "x": -376,
+        "z": 376
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 7,
+      "structure": "pillager_outpost",
+      "observed": {
+        "x": 856,
+        "z": 648
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 7,
+      "structure": "shipwreck",
+      "observed": {
+        "x": 40,
+        "z": 24
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 7,
+      "structure": "buried_treasure",
+      "observed": {
+        "x": -376,
+        "z": 344
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 7,
+      "structure": "ruined_portal",
+      "observed": {
+        "x": 8,
+        "z": 360
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 8,
+      "structure": "village",
+      "observed": {
+        "x": -456,
+        "z": -248
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 8,
+      "structure": "ancient_city",
+      "observed": {
+        "x": -984,
+        "z": 584
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 8,
+      "structure": "pillager_outpost",
+      "observed": {
+        "x": -1048,
+        "z": -840
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 8,
+      "structure": "shipwreck",
+      "observed": {
+        "x": -1080,
+        "z": 1256
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 8,
+      "structure": "buried_treasure",
+      "observed": {
+        "x": -248,
+        "z": 136
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 9,
+      "structure": "village",
+      "observed": {
+        "x": -392,
+        "z": 248
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 9,
+      "structure": "ancient_city",
+      "observed": {
+        "x": -1784,
+        "z": 1304
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 9,
+      "structure": "pillager_outpost",
+      "observed": {
+        "x": -808,
+        "z": 584
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 9,
+      "structure": "shipwreck",
+      "observed": {
+        "x": 248,
+        "z": 232
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 9,
+      "structure": "ruined_portal",
+      "observed": {
+        "x": 88,
+        "z": 72
+      }
     }
-  ]
+  ],
+  "biome_samples": []
 }

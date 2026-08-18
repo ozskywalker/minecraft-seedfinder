@@ -76,6 +76,50 @@ pub fn predicted_for_region(
         .collect()
 }
 
+/// Predict which scattered structure type occupies the temple slot at `temple`, from
+/// the biome at that anchor (PLAN §2.5: the four scattered structures are a single
+/// slot disambiguated purely by biome; §2.6: placement runs a biome-validity check).
+///
+/// `biome_at` maps `(x, z)` to a biome numeric id (e.g. cubiomes), and `resolve` maps
+/// a gate biome name to the same numeric id space. Returns the scattered id whose gate
+/// contains the anchor biome, or `None` if the anchor biome is in no scattered gate.
+///
+/// ⚠️ Honesty (PLAN §2.6, §8): the game's biome-validity check samples a *region*, not
+/// necessarily the single anchor point, and its exact coordinates remain `[UNCONFIRMED]`.
+/// So this prediction is a strong signal, not a proof — see `report-scattered-type`.
+pub fn predict_scattered_type<B, R>(
+    version: &Version,
+    temple: BlockPos,
+    biome_at: B,
+    resolve: R,
+) -> Option<&'static str>
+where
+    B: Fn(i64, i64) -> Option<u16>,
+    R: Fn(&str) -> Option<u16>,
+{
+    let biome_id = biome_at(temple.x, temple.z)?;
+    SCATTERED_IDS
+        .iter()
+        .find(|id| {
+            version
+                .structures
+                .get(**id)
+                .map(|sp| sp.biomes.iter().any(|b| resolve(b) == Some(biome_id)))
+                .unwrap_or(false)
+        })
+        .copied()
+}
+
+/// The primary gate biome used to probe a scattered structure's type on the server via
+/// `/locate biome` (the first biome in each scattered structure's gate list).
+pub fn primary_gate_biome<'a>(version: &'a Version, id: &str) -> Option<&'a str> {
+    version
+        .structures
+        .get(id)
+        .and_then(|sp| sp.biomes.first())
+        .map(String::as_str)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,5 +183,68 @@ mod tests {
                 "prediction must equal observation for this fabricated sample"
             );
         }
+    }
+
+    /// `predict_scattered_type` maps an anchor biome to the unique scattered gate that
+    /// contains it, and returns `None` for an anchor biome in no scattered gate.
+    #[test]
+    fn predict_scattered_type_maps_anchor_biome_to_gate() {
+        let v = version();
+        // Fake biome ids keyed by name; distinct per gate.
+        let id = |name: &str| -> u16 {
+            match name {
+                "desert" => 1,
+                "desert_hills" => 2,
+                "desert_lakes" => 3,
+                "icePlains" => 10,
+                "coldTaiga" => 11,
+                "jungle" => 20,
+                "jungle_hills" => 21,
+                "swamp" => 30,
+                "swampland" => 31,
+                _ => 0,
+            }
+        };
+        // biome_at returns the id for a fake name derived from the passed position.
+        let resolve = |name: &str| -> Option<u16> { Some(id(name)) };
+
+        // Anchor in desert -> desert_pyramid.
+        let biome_at = |_x: i64, _z: i64| -> Option<u16> { Some(id("desert")) };
+        assert_eq!(
+            predict_scattered_type(&v, BlockPos::new(0, 0), biome_at, resolve),
+            Some("desert_pyramid")
+        );
+
+        // Anchor in jungle -> jungle_pyramid.
+        let biome_at = |_x: i64, _z: i64| -> Option<u16> { Some(id("jungle")) };
+        assert_eq!(
+            predict_scattered_type(&v, BlockPos::new(0, 0), biome_at, resolve),
+            Some("jungle_pyramid")
+        );
+
+        // Anchor in swamp -> swamp_hut.
+        let biome_at = |_x: i64, _z: i64| -> Option<u16> { Some(id("swampland")) };
+        assert_eq!(
+            predict_scattered_type(&v, BlockPos::new(0, 0), biome_at, resolve),
+            Some("swamp_hut")
+        );
+
+        // Anchor in a biome in no scattered gate (e.g. plains) -> None.
+        let biome_at = |_x: i64, _z: i64| -> Option<u16> { Some(99) };
+        assert_eq!(
+            predict_scattered_type(&v, BlockPos::new(0, 0), biome_at, resolve),
+            None
+        );
+    }
+
+    /// `primary_gate_biome` returns the first gate biome of a scattered structure.
+    #[test]
+    fn primary_gate_biome_is_first_gate_entry() {
+        let v = version();
+        assert_eq!(primary_gate_biome(&v, "desert_pyramid"), Some("desert"));
+        assert_eq!(primary_gate_biome(&v, "igloo"), Some("icePlains"));
+        assert_eq!(primary_gate_biome(&v, "jungle_pyramid"), Some("jungle"));
+        assert_eq!(primary_gate_biome(&v, "swamp_hut"), Some("swamp"));
+        assert_eq!(primary_gate_biome(&v, "not_scattered"), None);
     }
 }

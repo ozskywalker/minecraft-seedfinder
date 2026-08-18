@@ -81,7 +81,13 @@ badges, map rendering) which are manual, then the remaining Phase 6 optimization
 bottleneck — has been landed (~3× on the single-variable exhaustive sweep). The
 1.21.40 biome-validation server was stood up (§4), the biome gate is GREEN
 at 100%, and the ephemeral container removed — Phase B biome gates are built on validated
-output.
+output. **2026-08-18 (validation-widening session):** the anchor corpus was widened from
+5 to 10 seeds (47 samples) and the scattered corpus from 5 to 7 seeds (28 samples), both
+still 100%; Phase C (`verify-seeds`) was run on 5 real search-result seeds with 0 FAIL.
+Mansion / ocean_ruin / trail_ruins and scattered-type resolution turned out **not
+validatable via `/locate`** (terrain-dependent generation failure / bounding-box-centre
+responses / no per-coordinate biome query) — documented honestly in §8 and
+`versions/1.21.40.json` rather than overclaimed. See the session handoff at the end.
 
 ---
 
@@ -807,3 +813,70 @@ why `verify-seed` uses the corpus's region-backed-out placement check instead.
    biome-gated search (which scattered structure appears where) against the live server.
 6. **Docs/status** — refresh CLAUDE.md/README Phase 6 wording to note the batched path
    is now live + CI-guarded (currently they say "not wired into the CLI/server").
+
+---
+
+## Session handoff — 2026-08-18 (Phase C verification + validation widening)
+
+This session did the remaining validation work: (1) ran Phase C (`verify-seeds`) on real
+search-result seeds against the live server, (2) widened the anchor and scattered corpora,
+(3) attempted mansion / ocean_ruin / trail_ruins / scattered-type validation. The honest
+outcome is that the reliable structures are confirmed 100%, Phase C passes, and
+**`woodland_mansion` was resolved as live-verified** (the earlier "no mansion" was a wrong
+`/locate` id — see below), while ocean_ruin, trail_ruins and scattered-type resolution
+turned out **not validatable via `/locate`** and are documented as such rather than
+overclaimed.
+
+### Code shipped
+- `be-corpus verify-seeds` (multi-seed Phase C: `--seeds a,b,c` and/or `--stdin`, decimal
+  or `0x`-hex seeds, per-seed PASS/FAIL/SKIP, nonzero exit iff any FAIL). `verify-seed`
+  refactored to share `verify_one_seed`.
+- `be-search search --seeds-only` (one 64-bit decimal seed per line) → pipes cleanly into
+  `verify-seeds --stdin`.
+- `be-corpus generate-probe` (separate, non-gated corpus for low-confidence structures)
+  and `generate-scattered-type` / `report-scattered-type` (exploratory type resolution).
+- `be-corpus::scattered::{predict_scattered_type, primary_gate_biome}` (pure, unit-tested).
+- `be-corpus/tests/phase_c_logic.rs` — offline CI gate pinning the Phase C decision logic
+  (`compare`/`predict_for_region`/`Verdict`) and that every anchor structure (incl. mansion)
+  is modelled.
+- `cmd_generate` response_wait 1500ms → 4000ms (the AGENTS.md-known flaky setting).
+- `woodland_mansion` added to `ANCHOR_STRUCTURES` and the generate probe list.
+
+### Live validation results (2026-08-18, live BDS 1.26.43)
+- **Main corpus widened:** `fixtures/corpus-1.21.40.json` → 10 seeds / **47 samples, 100%**
+  (7 anchor structures; ocean_monument honestly absent near origin).
+- **Scattered corpus widened:** `fixtures/corpus-scattered-1.21.40.json` → 7 seeds /
+  **28 samples, 100%**.
+- **Phase C on real search seeds:** `be-search search "village v1 @origin <= 800
+  \ndesert_pyramid d1 @v1 in 400..1200" --seeds-only | verify-seeds` on 5 distinct-low32
+  seeds → **0 FAIL**; every parseable observation PASSed (SKIPs were honest).
+- **Mansion:** LIVE-VERIFIED (2026-08-18). The earlier 4/4 "no mansion" was an artifact of
+  the **wrong `/locate` id**: Bedrock's `/locate structure` id is `mansion`, not
+  `woodland_mansion` (the model id returns "No valid structure found"). With the correct id,
+  the model's placement matches the live BDS 1.26.43 server at **100%** (7/7 resolved seeds,
+  region-backed-out exact). Structural params (salt 10387319, spacing 80, chunk_range 60,
+  triangular) confirmed correct. The `be-corpus::locate_id` mapping is wired into the Phase C
+  verify flow; the search model id stays `woodland_mansion`.
+- **ocean_ruin:** `/locate` never resolved a parseable position (6 seeds) — inconclusive.
+- **trail_ruins:** returns a variable non-anchor (bbox-centre) position — 0% on the anchor
+  model (like trial_chambers) — not confirmable via /locate.
+- **Scattered-type resolution:** inconclusive — biome `/locate` is slow/flaky and there is
+  no per-coordinate biome query (§2.6). Documented limitation.
+
+### What NOT to claim
+Do not present ocean_ruin, trail_ruins, or the scattered-type resolution as live-verified.
+(woodland_mansion IS live-verified as of 2026-08-18 — see above.) `versions/1.21.40.json`
+and §8 carry the honest UNVERIFIED / low-confidence notes; `fixtures/corpus-probe.json`
+records the trail_ruins negative result.
+
+### Still open (unchanged from prior handoff)
+- Phase 5 §7 manual browser acceptance runs.
+- Phase 6 remaining: constellation result caching; GPU compute.
+- **Biome-corpus widening deferred.** Attempting to widen `biome-corpus-1.21.40.json` from
+  5 to 8 seeds gave **87.5%** (plains 71%, forest 86%) instead of 100%, but the mismatches
+  look like `/locate biome` scrape contamination (e.g. the same nearest-forest coordinate
+  recorded for two different seeds, a known stale-response symptom) rather than genuine
+  Java↔Bedrock parity divergence. The original 100% corpus is retained as the validated
+  fixture; biome widening should only be re-attempted after making the biome `/locate`
+  scrape staleness-proof (investigate the `docker logs --since` window under rapid
+  sequential locates).

@@ -1,7 +1,7 @@
 {
   "version": "1.21.40",
   "seed_bits": 64,
-  "validated_against": "STRUCTURES: BDS 1.26.43.1 live server — village/ocean_monument/ancient_city/pillager_outpost/shipwreck/buried_treasure/ruined_portal predicted EXACTLY on random-seed world -2932807814640844199 AND 4 fresh per-seed worlds (42, 12345, 777, 20240812); 30-sample corpus (seeds 0..4) at 100% accuracy (fixtures/corpus-1.21.40.json). SHARED-SALT SCATTERED SET (desert_pyramid/igloo/jungle_pyramid/swamp_hut): shared placement CONFIRMED EXACT on 20 samples (5 seeds x 4 ids), fixtures/corpus-scattered-1.21.40.json (2026-08-18). trial_chambers returns bounding-box CENTRE (block%16!=8), jigsaw, salt NOT confirmable via /locate (PLAN §4/§2.8). BIOMES: validated GREEN 2026-08-12 — cubiomes matches BDS /locate biome 100% on both a matched-version 1.21.40.03 container (fixtures/biome-corpus-1.21.40.bds.json) and the live 1.26.43 server (fixtures/biome-corpus-1.21.40.json); earlier 18% was a bridge y/z bug now fixed (see be-biome lib.rs).",
+  "validated_against": "STRUCTURES: BDS 1.26.43.1 live server — village/ocean_monument/ancient_city/pillager_outpost/shipwreck/buried_treasure/ruined_portal predicted EXACTLY on random-seed world -2932807814640844199 AND 4 fresh per-seed worlds (42, 12345, 777, 20240812); 30-sample corpus (seeds 0..4) at 100% accuracy (fixtures/corpus-1.21.40.json, WIDENED to 10 seeds / 47 samples 2026-08-18). woodland_mansion LIVE-VERIFIED 2026-08-18: the /locate id is 'mansion' (NOT 'woodland_mansion' — which returns 'No valid structure found'), and with it the model matches the live BDS 1.26.43 server at 100% (7/7 resolved seeds exact, region-backed-out). The earlier 4/4 'no mansion' finding was a wrong /locate id artifact. ocean_ruin /locate never resolved on 6 probe seeds (inconclusive); trail_ruins returns a variable non-anchor (bbox-centre) position, 0% on the anchor model — both remain low-confidence/UNVERIFIED (fixtures/corpus-probe.json, 2026-08-18). SHARED-SALT SCATTERED SET (desert_pyramid/igloo/jungle_pyramid/swamp_hut): shared placement CONFIRMED EXACT on 28 samples (7 seeds x 4 ids), fixtures/corpus-scattered-1.21.40.json (2026-08-18). Scattered-set TYPE resolution (which scattered structure occupies the temple slot) could NOT be grounded via /locate — biome /locate responses are slow/flaky and there is no per-coordinate biome query (PLAN §2.6 regional biome-check semantics UNCONFIRMED); documented limitation. trial_chambers returns bounding-box CENTRE (block%16!=8), jigsaw, salt NOT confirmable via /locate (PLAN §4/§2.8). BIOMES: validated GREEN 2026-08-12 — cubiomes matches BDS /locate biome 100% on both a matched-version 1.21.40.03 container (fixtures/biome-corpus-1.21.40.bds.json) and the live 1.26.43 server (fixtures/biome-corpus-1.21.40.json); earlier 18% was a bridge y/z bug now fixed (see be-biome lib.rs).",
   "structures": {
     "desert_pyramid": {
       "salt": 14357617,
@@ -70,7 +70,7 @@
       "distribution": "triangular",
       "biomes": ["roofedForest"],
       "shares_slot_with": [],
-      "provenance": "bedrockified + MCBEStructureFinder; PLAN §2.5",
+      "provenance": "bedrockified + MCBEStructureFinder; PLAN §2.5. LIVE-VERIFIED 2026-08-18: with the correct /locate id 'mansion' (NOT 'woodland_mansion' — that id makes /locate return 'No valid structure found'), placement matches the live BDS 1.26.43 server at 100% (7/7 resolved seeds, region-backed-out exact: -7480/-4600, 7096/2968, 232/1592, 8088/5640, -3768/-4216, 5976/1832, 1464/-712; see ANCHOR_STRUCTURES + locate_id). The earlier 'no mansion on 4/4 seeds' conclusion was a wrong /locate id artifact, not a generation failure.",
       "confidence": "high"
     },
     "pillager_outpost": {
@@ -130,7 +130,7 @@
       "distribution": "linear",
       "biomes": [],
       "shares_slot_with": [],
-      "provenance": "PLAN §2.5; distribution flagged UNCONFIRMED (?), linear assumed",
+      "provenance": "PLAN §2.5; distribution flagged UNCONFIRMED (?), linear assumed. Live probe 2026-08-18: /locate structure ocean_ruin never resolved a parseable position on 6 seeds (inconclusive) — could not validate.",
       "confidence": "low"
     },
     "trail_ruins": {
@@ -140,7 +140,7 @@
       "distribution": "triangular",
       "biomes": [],
       "shares_slot_with": [],
-      "provenance": "PLAN §2.5; distribution flagged UNCONFIRMED (?), triangular assumed",
+      "provenance": "PLAN §2.5; distribution flagged UNCONFIRMED (?), triangular assumed. Live probe 2026-08-18: /locate returns a variable non-anchor (bounding-box-centre) position — 0% on the anchor model across 6 seeds (like trial_chambers), so placement is not confirmable via /locate.",
       "confidence": "low"
     },
     "trial_chambers": {

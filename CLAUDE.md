@@ -66,8 +66,14 @@ caveats in that section.
     `/locate` reported (`region_of_block`) and recomputes the prediction with
     `be-struct`, reporting exact/within-tolerance rates, mean/max distance, and the
     mean signed x/z offset. `overall_rate` is the CI gate number — currently **100%**.
-  - CLI: `be-corpus report <corpus.json> [tolerance]` (works offline) and
-    `be-corpus generate ...` (needs a real BDS via `--host`; see `AGENTS.md`).
+  - CLI: `be-corpus report <corpus.json> [tolerance]` (works offline),
+    `be-corpus generate ...` (needs a real BDS via `--host`; see `AGENTS.md`),
+    **`verify-seed --seed <n>`** and **`verify-seeds --seeds a,b,c [--stdin]`** (Phase C:
+    fresh world per seed, `/locate` each anchor, region-backed-out PASS/FAIL/SKIP),
+    `generate-probe` (low-confidence structures into a separate, non-gated corpus),
+    `generate-scattered-type` + `report-scattered-type` (exploratory scattered-type
+    resolution; see caveat below). The search CLI's `--seeds-only` pipes straight into
+    `verify-seeds --stdin`.
 - **`crates/cubiomes-sys`** — vendored [cubiomes](https://github.com/Cubitect/cubiomes)
   (MIT, under `cubiomes/`), compiled with `cc`/MSVC (auto-discovered via vswhere — no
   C toolchain on PATH required). Builds only the minimal `getBiomeAt` set
@@ -99,7 +105,9 @@ caveats in that section.
     (PLAN §6) for the single-structure origin-anchored exhaustive case — bit-identical
     result set to `search_range` (~3× faster), transparently falling back to the scalar
     sweep for any other query shape.
-  - `main` — the `be-search` CLI (`feasibility`, `search` subcommands).
+  - `main` — the `be-search` CLI (`feasibility`, `search` subcommands). `search` emits
+    one full seed per result; `--seeds-only` prints just the 64-bit decimal seed per
+    line for clean piping into `be-corpus verify-seeds --stdin` (Phase C).
 - **`crates/server`** — axum REST + SSE API, and the deliverable entry point:
   - `POST /api/search` — SSE stream of `mode` → `result`s (as found) → `done`, with
     feasibility `note`s surfaced for impossible queries.
@@ -164,10 +172,11 @@ Java, seed/world control). Summary:
 **Phase 0 gate: passed.** Both halves are validated against real Bedrock servers, not
 just each other:
 
-- **Structure placement: 100%** (6 structures × 5 seeds, exact match) — `be-struct`
-  predictions match the real BDS server's `/locate structure` output across the
-  1.21.x–1.26.43 range. Reproduce offline: `cargo run -p be-corpus -- report
-  fixtures/corpus-1.21.40.json`.
+- **Structure placement: 100%** (7 anchor structures across 10 seeds, exact match) —
+  `be-struct` predictions match the real BDS server's `/locate structure` output across
+  the 1.21.x–1.26.43 range. Reproduce offline: `cargo run -p be-corpus -- report
+  fixtures/corpus-1.21.40.json` (widened to **47 samples / 10 seeds** 2026-08-18).
+  The shared-salt scattered set (28 samples / 7 seeds) is also 100%.
 - **Biome gate: GREEN at 100%** for the corpus's surface biomes — cubiomes' `getBiomeAt`
   matches real BDS `/locate biome` output on both a matched-version **1.21.40** server
   and the live **1.26.43** server (`fixtures/biome-corpus-1.21.40.json`,
@@ -176,17 +185,48 @@ just each other:
   every surface coordinate) — fixed and regression-tested
   (`cubiomes_sys::surface_biome_is_not_deep_dark`,
   `be-corpus::biome_parity_gate_is_green`).
+- **Phase C (2026-08-18):** `be-corpus verify-seeds` ran on **5 real search-result seeds**
+  (from a `village + desert_pyramid` adventure DSL query) against the live server —
+  **0 FAIL**; every parseable `/locate` observation PASSed (SKIPs were honest: monument
+  absent near origin, some response-timing). Search CLI `--seeds-only` →
+  `verify-seeds --stdin` is the wired pipeline.
 
 **Remaining honesty caveats** (do not overclaim past these; tracked in `PLAN.md` §8):
 
 - ~~**Shared-salt placement is NOT yet confirmed.**~~ **RESOLVED 2026-08-18.** The
   shared-salt "scattered" set (desert pyramid / igloo / jungle pyramid / swamp hut) was
-  captured against the live BDS 1.26.43 server (`generate-scattered`, 5 seeds × 4 ids)
+  captured against the live BDS 1.26.43 server (`generate-scattered`, 7 seeds × 4 ids)
   and confirms **100% exact shared placement** (`fixtures/corpus-scattered-1.21.40.json`,
   `be-corpus report`, CI-gated). Version-table entries for the scattered set are now
   `confidence: high`.
-  - Trial-chamber distribution also has unresolved source conflicts and is flagged
-    `[UNCONFIRMED]` in the version tables.
+- **`woodland_mansion` IS live-validated (RESOLVED 2026-08-18).** The earlier
+  "4/4 seeds, no mansion" conclusion was caused by using the **wrong `/locate` id**:
+  Bedrock's `/locate structure` id for the woodland mansion is **`mansion`**, not
+  `woodland_mansion` (the model id makes `/locate` return "No valid structure found").
+  With the correct id, placement matches the live BDS 1.26.43 server at **100%**
+  (7/7 resolved seeds, region-backed-out exact). The model's structural params
+  (salt 10387319, spacing 80, chunk_range 60, triangular) were correct all along. The
+  `be-corpus::locate_id` mapping (woodland_mansion → mansion) is wired into the Phase C
+  verify flow; the search engine's model id remains `woodland_mansion`. Mansions are
+  live-verified — use the correct `/locate` id (`mansion`) when probing manually.
+- **`ocean_ruin` / `trail_ruins` remain unvalidated (2026-08-18).** `ocean_ruin`'s
+  `/locate` never resolved a parseable position; `trail_ruins` returns a variable
+  non-anchor (bounding-box-centre) position (0% on the anchor model, like
+  `trial_chambers`). Both stay `confidence: low` / `UNVERIFIED`
+  (`fixtures/corpus-probe.json`).
+- **Scattered-set TYPE resolution is inconclusive (2026-08-18).** Which scattered
+  structure (pyramid vs igloo vs jungle vs swamp_hut) occupies the temple slot could not
+  be grounded via `/locate` — biome `/locate` responses are slow/flaky and there is no
+  per-coordinate biome query (PLAN §2.6 regional biome-check semantics remain
+  `[UNCONFIRMED]`). The prediction helper exists and is unit-tested, but the live
+  ground-truth is a documented limitation, not a claim.
+- **Biome-corpus widening is deferred (2026-08-18).** A widened `generate-biome` run
+  (5→8 seeds) produced **87.5%** instead of 100%, but the mismatches look like `/locate
+  biome` scrape contamination (e.g. the same nearest-biome coordinate recorded for two
+  different seeds — a known stale-response symptom), not genuine parity divergence. The
+  original 100% biome corpus is retained; do not treat the 87.5% as real accuracy loss.
+- **Trial-chamber distribution** also has unresolved source conflicts and is flagged
+  `[UNCONFIRMED]` in the version tables.
 - **Biome parity is empirically observed, not source-proven**, and only for the corpus's
   surface biomes — other biomes/edge cases are unproven. Don't present `be-biome` output
   as universally Bedrock-accurate; it's accurate for what's actually been checked.
@@ -195,10 +235,9 @@ just each other:
   was later re-confirmed with a real 1.21.40 validation container producing
   `biome-corpus-1.21.40.bds.json` (100%) — treat the structure/biome agreement as sound
   across that range, but note the label history if a discrepancy ever surfaces.
-- Ground-truth verification of individual *search results* (spawning a real server per
-  finalist seed, PLAN §7 "Phase C") is wired but not run in CI — it needs a live Bedrock
-  server, so search-result seeds are unverified beyond the structural/biome math above
-  until that step is actually run.
+- **Phase C live runs are not in CI** (they need a live Bedrock server). The decision
+  logic is pinned offline by `be-corpus/tests/phase_c_logic.rs`; the live run itself is
+  an ops step (`verify-seeds --host ...`), which was executed 2026-08-18 with 0 FAIL.
 - The Phase 5 (server/UI) acceptance runs — open a browser, confirm mode selection and
   VERIFIED badges — are manual and have not been exercised as part of CI.
 

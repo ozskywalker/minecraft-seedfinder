@@ -1,0 +1,59 @@
+{
+  "samples": [
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "trail_ruins",
+      "observed": {
+        "x": -429,
+        "z": 707
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "trail_ruins",
+      "observed": {
+        "x": -989,
+        "z": -989
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "trail_ruins",
+      "observed": {
+        "x": 643,
+        "z": 125
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "trail_ruins",
+      "observed": {
+        "x": -910,
+        "z": 222
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "trail_ruins",
+      "observed": {
+        "x": 626,
+        "z": 1470
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 5,
+      "structure": "trail_ruins",
+      "observed": {
+        "x": 269,
+        "z": -749
+      }
+    }
+  ],
+  "biome_samples": []
+}

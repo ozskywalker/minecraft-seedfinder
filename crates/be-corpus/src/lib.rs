@@ -29,8 +29,24 @@ pub use accuracy::{
 };
 pub use be_struct::Version;
 pub use corpus::{BiomeSample, BlockPos, Corpus, Sample};
-pub use scattered::{scattered_samples, SCATTERED_IDS, TEMPLE_LOCATE_ID};
+pub use scattered::{
+    predict_scattered_type, primary_gate_biome, scattered_samples, SCATTERED_IDS, TEMPLE_LOCATE_ID,
+};
 pub use verify::{compare, predict_for_region, Verdict, ANCHOR_STRUCTURES};
+
+/// Map a model structure id to the `/locate structure <id>` id accepted by Bedrock.
+///
+/// Most structure ids are identical between the model and the game, but not all:
+/// `woodland_mansion` is the model's id while Bedrock's `/locate` id is `mansion`
+/// (using `woodland_mansion` makes `/locate` return "No valid structure found" — a
+/// silent false-negative that invalidates any mansion verification built on the wrong
+/// id; see PLAN §2.8).
+pub fn locate_id(structure: &str) -> &str {
+    match structure {
+        "woodland_mansion" => "mansion",
+        _ => structure,
+    }
+}
 
 /// A version string parsed enough to answer "is the biome namespace required?".
 ///
@@ -60,5 +76,17 @@ mod tests {
         assert!(biome_namespace_required("1.21.120"));
         assert!(biome_namespace_required("1.22.0"));
         assert!(!biome_namespace_required("1.20.80"));
+    }
+
+    #[test]
+    fn locate_id_maps_mansion() {
+        assert_eq!(locate_id("woodland_mansion"), "mansion");
+        // Every other anchor structure's model id is its /locate id.
+        for id in crate::verify::ANCHOR_STRUCTURES {
+            if id == "woodland_mansion" {
+                continue;
+            }
+            assert_eq!(locate_id(id), id, "unexpected mapping for {id}");
+        }
     }
 }

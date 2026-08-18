@@ -29,7 +29,12 @@ use crate::corpus::BlockPos;
 /// Anchor-returning structures the model can verify one-to-one via `/locate structure
 /// <id>`. These are the validated, non-scattered structures (PLAN §4/§2.8;
 /// trial_chambers excluded — it returns the bounding-box centre).
-pub const ANCHOR_STRUCTURES: [&str; 7] = [
+///
+/// `woodland_mansion` was added 2026-08-18 and is **live-verified at 100%** (7/7
+/// resolved seeds, exact region-backed-out placement). Its `/locate` id is `mansion`,
+/// not `woodland_mansion` (using the model id makes `/locate` return "No valid
+/// structure found"); the [`crate::locate_id`] mapping handles that.
+pub const ANCHOR_STRUCTURES: [&str; 8] = [
     "village",
     "ocean_monument",
     "ancient_city",
@@ -37,6 +42,7 @@ pub const ANCHOR_STRUCTURES: [&str; 7] = [
     "shipwreck",
     "buried_treasure",
     "ruined_portal",
+    "woodland_mansion",
 ];
 
 /// Predict the model's placement of `structure` for the region that the observed

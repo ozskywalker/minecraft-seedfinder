@@ -25,7 +25,7 @@ const USAGE: &str = "\
 usage:
   be-search feasibility '<dsl>'
   be-search search '<dsl>' [--low-start N] [--low-end N] [--high-start N]
-             [--high-end N] [--max-per-candidate N] [--no-biomes]
+             [--high-end N] [--max-per-candidate N] [--no-biomes] [--seeds-only]
 ";
 
 fn main() -> ExitCode {
@@ -86,6 +86,7 @@ fn cmd_search(args: &[String]) -> ExitCode {
     let high_end = parse_kv(args, "--high-end").unwrap_or(100) as u32;
     let max_per = parse_kv(args, "--max-per-candidate").unwrap_or(0) as usize;
     let no_biomes = args.iter().any(|a| a == "--no-biomes");
+    let seeds_only = args.iter().any(|a| a == "--seeds-only");
 
     let query = match parse(dsl) {
         Ok(q) => q,
@@ -112,21 +113,28 @@ fn cmd_search(args: &[String]) -> ExitCode {
         plan: &plan,
     };
 
-    println!(
-        "mode: {}",
-        match plan.mode {
-            be_search::Mode::Exhaustive => "exhaustive (structural: complete over low32)",
-            be_search::Mode::Satisficing => "satisficing (no completeness guarantee)",
-        }
-    );
-    println!("phase A: structural sweep over low32 in {low_start}..{low_end}");
+    if !seeds_only {
+        println!(
+            "mode: {}",
+            match plan.mode {
+                be_search::Mode::Exhaustive => "exhaustive (structural: complete over low32)",
+                be_search::Mode::Satisficing => "satisficing (no completeness guarantee)",
+            }
+        );
+        println!("phase A: structural sweep over low32 in {low_start}..{low_end}");
+    }
 
     let structural = engine.search_range_batched(low_start, low_end);
-    println!("phase A: {} structural candidates", structural.len());
+    if !seeds_only {
+        println!("phase A: {} structural candidates", structural.len());
+    }
 
     if no_biomes {
         for c in &structural {
-            print_candidate(&query, c);
+            print_candidate(&query, c, seeds_only);
+        }
+        if !seeds_only {
+            println!("emitted {} structural result(s)", structural.len());
         }
         return ExitCode::SUCCESS;
     }
@@ -134,22 +142,34 @@ fn cmd_search(args: &[String]) -> ExitCode {
     let map = builtin_biome_map();
     let mc = cubiomes_sys::mc_latest();
     let mut biome_engine = BiomeEngine::new(&query, &map, mc);
-    println!("phase B: biome resolution over high32 in {high_start}..{high_end} (satisficing)");
+    if !seeds_only {
+        println!(
+            "phase B: biome resolution over high32 in {high_start}..{high_end} (satisficing)"
+        );
+    }
 
     let mut emitted = 0usize;
     let filtered = biome_engine.resolve_biomes(&structural, high_start, high_end, max_per);
     for c in &filtered {
         // Invariant re-check before display (structural + biome).
         if engine.verify(c) && biome_engine.verify(c) {
-            print_candidate(&query, c);
+            print_candidate(&query, c, seeds_only);
             emitted += 1;
         }
     }
-    println!("emitted {} full-seed result(s)", emitted);
+    if !seeds_only {
+        println!("emitted {} full-seed result(s)", emitted);
+    }
     ExitCode::SUCCESS
 }
 
-fn print_candidate(query: &be_search::Query, c: &be_search::Candidate) {
+fn print_candidate(query: &be_search::Query, c: &be_search::Candidate, seeds_only: bool) {
+    if seeds_only {
+        // 64-bit decimal, one per line — pipes cleanly into `be-corpus verify-seeds
+        // --stdin` for Phase C verification (u64, so full-range seeds round-trip).
+        println!("{}", c.seed);
+        return;
+    }
     let mut parts: Vec<String> = Vec::new();
     for (i, var) in query.vars.iter().enumerate() {
         let p = c.positions[i];
