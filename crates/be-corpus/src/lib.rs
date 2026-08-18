@@ -20,6 +20,8 @@
 
 pub mod accuracy;
 pub mod corpus;
+pub mod scattered;
+pub mod verify;
 
 pub use accuracy::{
     compute_accuracy, compute_biome_agreement, AccuracyReport, BiomeAgreementReport,
@@ -27,6 +29,8 @@ pub use accuracy::{
 };
 pub use be_struct::Version;
 pub use corpus::{BiomeSample, BlockPos, Corpus, Sample};
+pub use scattered::{scattered_samples, SCATTERED_IDS, TEMPLE_LOCATE_ID};
+pub use verify::{compare, predict_for_region, Verdict, ANCHOR_STRUCTURES};
 
 /// A version string parsed enough to answer "is the biome namespace required?".
 ///
