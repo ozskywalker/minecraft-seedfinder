@@ -1,0 +1,3 @@
+# Normalize the committed git-hook shims to LF so the shebang/script stays valid on
+# Windows (Git-for-Windows bash) and macOS/Linux alike.
+.githooks/** text eol=lf

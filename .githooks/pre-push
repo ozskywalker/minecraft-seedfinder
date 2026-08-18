@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Pre-push hook: run the full local CI gate (build.ps1 -Test) so CI is already green
+# before the commit leaves the machine. Installed via core.hooksPath
+# (see scripts/setup-hooks.ps1).
+set -euo pipefail
+if ! command -v pwsh >/dev/null 2>&1; then
+  echo "pre-push: PowerShell 7 (pwsh) not found on PATH." >&2
+  echo "  Install PowerShell 7, or run the checks manually: .\build.ps1 -Test" >&2
+  exit 1
+fi
+root="$(git rev-parse --show-toplevel)"
+pwsh -NoProfile -ExecutionPolicy Bypass -File "$root/build.ps1" -Test

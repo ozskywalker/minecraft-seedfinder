@@ -98,13 +98,23 @@ what an ephemeral container with `LEVEL_SEED` achieves.
 ## Working conventions
 
 - This is a Cargo workspace (see `CLAUDE.md`); `cargo test --workspace` and
-  `cargo clippy --workspace --all-targets` must stay green.
+  `cargo clippy --workspace --all-targets` must stay green. **Run the full local CI gate
+  before pushing:** `.\build.ps1 -Test` mirrors `.github/workflows/ci.yml` (fmt, clippy
+  `-D warnings`, tests, SIMD perf guard, cargo-deny, UI test/typecheck/build). Note that
+  `cargo clippy` **alone does NOT cover `cargo fmt`** — always use `-Test` (or the hooks)
+  rather than a bare `cargo clippy`.
+- **Git hooks (recommended):** install once with `.\scripts\setup-hooks.ps1` (sets
+  `core.hooksPath .githooks`). `pre-commit` runs fmt + clippy (fast); `pre-push` runs the
+  full `-Test` gate, so CI is green before the commit leaves the machine. Hooks are
+  versioned in the repo so every clone gets the same gates.
 - **Self-build entry point:** `.\build.ps1` at the repo root is the convenient way to
   build from source on Windows. Default produces the production single-`.exe`
   (`dist\seedfinder.exe`, UI embedded — delegates to `scripts/build-release.ps1`). It
-  also offers `-Dev` (build UI + debug server for local iteration) and `-Test` (run the
-  Rust workspace tests, UI tests, and UI typecheck). Requires Rust + Node.js (>=20.19)
-  on the build machine; the release exe needs neither.
+  also offers `-Dev` (build UI + debug server for local iteration), `-Test` (the full
+  local CI gate above), and `-Test -SkipPerf` (same but skips the slow SIMD release perf
+  guard — a deliberate opt-out that weakens CI parity). Requires Rust + Node.js (>=20.19)
+  + cargo-deny (`cargo install cargo-deny --locked`) on the build machine; the release
+  exe needs neither.
 - Ground-truth validation must never be faked. The project's Phase 0 gate (PLAN §6/§7)
   requires generator predictions verified against the real Bedrock server before the
   search engine is trusted. Use the real servers above; record real captured output as

@@ -72,6 +72,12 @@ search.
 
 ## Build, test, lint
 
+**Quickest local CI gate (recommended):** `.\build.ps1 -Test` runs the same checks as the
+GitHub CI workflow (Rust fmt + clippy `-D warnings` + tests + SIMD perf guard + cargo-deny,
+and UI test/typecheck/build). `-Test -SkipPerf` skips only the slow SIMD release perf guard.
+Contributors can also install the versioned git hooks once with `.\scripts\setup-hooks.ps1`
+(`pre-commit` = fmt + clippy; `pre-push` = the full `-Test` gate).
+
 ```bash
 # Rust — everything
 cargo build --workspace

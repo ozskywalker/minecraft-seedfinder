@@ -126,11 +126,18 @@ caveats in that section.
 
 ## Build, test, lint
 
-- **Easiest entry point:** `.\build.ps1` at the repo root — `-Test` runs the full Rust
-  workspace tests + UI tests + UI typecheck; default (no flags) builds the production
-  single-exe (`dist\seedfinder.exe`); `-Dev` builds the UI + a debug server for local
-  iteration. See `AGENTS.md` for details. Requires Rust + Node.js (>=20.19) on the build
-  machine; the release exe itself needs neither.
+- **Easiest entry point:** `.\build.ps1` at the repo root — `-Test` runs the **full local
+  CI gate** mirroring `.github/workflows/ci.yml` (Rust fmt + clippy `-D warnings` + tests
+  + SIMD perf guard + cargo-deny, and UI test/typecheck/build). `-Test -SkipPerf` skips
+  only the slow SIMD release perf guard (a deliberate opt-out that weakens CI parity).
+  Default (no flags) builds the production single-exe (`dist\seedfinder.exe`); `-Dev`
+  builds the UI + a debug server for local iteration. Requires Rust + Node.js (>=20.19) +
+  cargo-deny on the build machine; the release exe itself needs neither.
+- **Git hooks (recommended):** `.\scripts\setup-hooks.ps1` sets `core.hooksPath .githooks`.
+  `pre-commit` = fmt + clippy (fast); `pre-push` = the full `-Test` gate, so CI is already
+  green before the commit leaves the machine. Because `cargo clippy` alone does **not**
+  cover `cargo fmt`, always run `-Test` (or rely on the hooks) rather than a bare
+  `cargo clippy`.
 - Install: `cargo build --workspace` (Rust toolchain; deps: serde, serde_json, regex,
   cc, axum, tokio, rayon).
 - Full Rust test suite: `cargo test --workspace`
