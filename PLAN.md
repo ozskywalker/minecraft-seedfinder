@@ -708,3 +708,95 @@ streaming MT's tiny working set means per-thread state is a handful of words, no
 - [minecraft.wiki — World seed](https://minecraft.wiki/w/World_seed) · [Bedrock 1.18.30](https://minecraft.wiki/w/Bedrock_Edition_1.18.30) · [Bedrock level format](https://minecraft.wiki/w/Bedrock_Edition_level_format) · [/locate](https://minecraft.wiki/w/Commands/locate)
 - [Bedrock Dedicated Server download](https://www.minecraft.net/en-us/download/server/bedrock)
 - [Ultrafast Minecraft Biome Generation (benchmarks)](https://rohan-sharma.de/blog/cubiomesmpi-part1/)
+
+
+---
+
+## Session handoff — 2026-08-18 (SIMD wiring, CI guard, validation tooling)
+
+> Self-contained handoff for a fresh session. This session: (1) wired the SIMD-batched
+> sweep into the real CLI + server search paths, (4) added a CI regression guard, and
+> (3) built the Phase C + shared-salt validation tooling. #2 (constellation result
+> caching) was **deferred**. Commits: `78affbe` (perf wiring + CI guard), `49b7fc6`
+> (validation tooling).
+
+### What shipped this session
+
+**#1 — SIMD batching is now the real search path (done).**
+- `Engine::search_range_visit_batched` added (`crates/be-search/src/executor.rs`) —
+  a streaming seam that emits candidates in ascending seed order, using the batched
+  sweep for single-structure origin-anchored queries and transparently falling back to
+  scalar `search_range_visit` otherwise. Refactored the batched core into
+  `batched_single_var_for_each`.
+- Server `POST /api/search` (`crates/server/src/search.rs::run_search`) now uses the
+  batched visitor (SSE path).
+- CLI `search` (`crates/be-search/src/main.rs::cmd_search`) now uses
+  `search_range_batched` for Phase A.
+- Tests: batched visitor == scalar visitor sequence (incl. fallback shapes), and a
+  server multi-var fallback test. Result set is bit-identical; mode/completeness
+  reporting unchanged.
+
+**#4 — CI regression guard (done).**
+- `crates/be-search/examples/bench_sweep.rs` gained `--check`: runs the release-mode
+  sweeps and exits nonzero if the worst scalar→batched speedup drops below 1.15× (real
+  is ~3×). Correctness (batched == scalar) already runs in `cargo test`.
+- `.github/workflows/ci.yml` rust job now runs
+  `cargo run -p be-search --release --example bench_sweep -- --check`.
+
+**#3 — tooling built (offline-tested); live run is an ops step.**
+- `be-corpus verify-seed` (Phase C): fresh world of a returned seed → `/locate` each
+  anchor structure → diff the model's region-backed-out placement vs the observation.
+- `be-corpus generate-scattered` (shared-salt): capture `/locate structure temple`
+  observations and record them under all four shared-salt scattered ids, so `report`
+  can validate the scattered set (previously `[UNCONFIRMED]`).
+- Pure logic lives in `crates/be-corpus/src/verify.rs` and `src/scattered.rs`
+  (offline unit-tested); live I/O is thin and gated behind `--host`.
+
+### Live-run commands (require the remote Bedrock server, AGENTS.md)
+
+These talk to the real `mc-bedrock` container and take real wall-clock time. They are
+**not** run in CI. The SSH agent on this machine has the keys.
+
+```sh
+# Phase C: verify one returned seed against the real server
+cargo run -p be-corpus -- verify-seed --seed 4242 --host ai-assistant-01.longbranch.lwalker.me
+#   optional: --structures village,ocean_monument --tolerance 16 --user luser
+
+# Shared-salt: capture a scattered-set corpus from the real server (N seeds)
+cargo run -p be-corpus -- generate-scattered --seeds 5 --host ai-assistant-01.longbranch.lwalker.me --out fixtures/corpus-scattered-1.21.40.json
+# then, offline, score it:
+cargo run -p be-corpus -- report fixtures/corpus-scattered-1.21.40.json
+```
+
+**Expected outcome / next step:** if `report` on the scattered corpus shows 100%, update
+`versions/1.21.40.json` for the four scattered structures (`desert_pyramid`, `igloo`,
+`jungle_pyramid`, `swamp_hut`) from `confidence: "medium"` and the shared-salt
+provenance to reflect empirical confirmation, and clear the Phase 0 "shared-salt NOT
+confirmed" caveat. Record the real captured fixture (never fabricate).
+
+### #2 — constellation result caching (deferred, do not pick up yet)
+
+Least-specified item. When you do it: cache computed structure geometry keyed by
+`(version, structure, region)` with a bounded eviction policy; must be bit-identical
+with the cache off (test cache-hit == recompute). Not a blocker for anything else.
+
+### Discovery worth remembering
+
+The search engine's `region_window` is **not distance-ordered** (row-major). So
+`evaluate_seed` does NOT reliably return the *nearest* structure that `/locate`
+returns — do not use it to predict `/locate` results for a fresh seed. That is exactly
+why `verify-seed` uses the corpus's region-backed-out placement check instead.
+
+### Options for next steps (pick one or more next session)
+
+1. **Run the live validation** (commands above): capture + report the scattered corpus,
+   update `versions/1.21.40.json` confidence, and run `verify-seed` on a few returned
+   seeds. Closes the last Phase 0 gate caveat.
+2. **Constellation result caching** (#2) — now that the SIMD work is wired and guarded.
+3. **GPU compute** (Phase 6 remaining) — the other documented optimization lever.
+4. **UI/acceptance** — §7 Phase 5 manual acceptance runs (browser, mode selection,
+   VERIFIED badges).
+5. **Broaden validation** — more anchor structures/seeds in the corpus, or validate the
+   biome-gated search (which scattered structure appears where) against the live server.
+6. **Docs/status** — refresh CLAUDE.md/README Phase 6 wording to note the batched path
+   is now live + CI-guarded (currently they say "not wired into the CLI/server").
