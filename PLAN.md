@@ -15,7 +15,7 @@ phase sections below describe design intent and are annotated with completion st
 
 | Phase | Status |
 |---|---|
-| **0** — De-risk / gate | ✅ **Passed.** Structure params, salts, distributions and the `/locate` anchor for the *validated* structures are empirically confirmed against the real server (see §7). **Biome gate is now GREEN at 100%** (see below). **Shared-salt behaviour is NOT yet confirmed** (the validated corpus doesn't include the shared-salt scattered set — see §8). |
+| **0** — De-risk / gate | ✅ **Passed.** Structure params, salts, distributions and the `/locate` anchor for the *validated* structures are empirically confirmed against the real server (see §7). **Biome gate is now GREEN at 100%** (see below). **Shared-salt scattered set (desert_pyramid/igloo/jungle_pyramid/swamp_hut) CONFIRMED 100%** (2026-08-18) against the live BDS 1.26.43 server — `fixtures/corpus-scattered-1.21.40.json` (5 seeds × 4 ids), exact placement on every sample; `versions/1.21.40.json` updated to `confidence: high` with a CI regression gate (see §8). |
 | **1** — `be-rng` + `be-struct` | ✅ **Complete.** Streaming MT, full version table, feasibility pre-check. |
 | **2** — `be-verify` + `be-corpus` | ✅ **Complete.** BDS harness, `/locate` parser, corpus generator, accuracy reporting. *Note the harness divergence below.* |
 | **3** — `cubiomes-sys` + `be-biome` | ✅ **Complete; biome validation GREEN.** FFI, Bedrock ID map, query/gate/grid all built and green, and cubiomes output now **validated 100%** against a matched-version 1.21.40 Bedrock server (and the live 1.26.43 server). |
@@ -689,7 +689,7 @@ streaming MT's tiny working set means per-thread state is a handful of words, no
 | Post-1.18 Bedrock↔Java biome parity is **empirically observed, not proven** — no source-level decompilation confirms identical noise parameters, and Mojang's own framing was "not 100% there yet, but close." | This is precisely why the measured accuracy figure is load-bearing rather than decorative. **RESOLVED 2026-08-12 for the corpus's surface biomes: cubiomes matches the real BDS server 100% on both a matched-version (1.21.40) and a 1.26.43 corpus.** The earlier RED reading was a bridge bug, not a parity gap. Remaining scope: biomes/biomes beyond the corpus. Validate against LevelDB grids; surface the number. |
 | **Biome gate is RED at 1.26.43** — cubiomes (≤1.21 Java) agrees with the live server only 18.2%, conflating version drift with edition parity. | **RESOLVED 2026-08-12.** The 18.2% figure was caused by a y/z argument-order bug in `cubiomes-sys/src/bridge.c`, not version drift or edition parity. Fixed (sample at y=63) and regression-tested. The matched-version **1.21.40.03** server was stood up, `generate-biome`/`report-biome` re-run → **100%** on both corpora; ephemeral container then removed. Biome results for the corpus's surface biomes may be presented as Bedrock-accurate. |
 | Temples can fail to generate on unsuitable terrain in 1.18+ (§2.8) | Flag affected structures as lower-confidence in the UI; BDS verification catches individual misses. |
-| Shared-salt finding is only medium-confidence | **Still open.** The validated corpus structures (village, monument, city, outpost, shipwreck, treasure, portal) are **not** the shared-salt scattered set (desert pyramid / igloo / jungle pyramid / swamp hut), so the 100% agreement does **not** confirm the shared-slot behaviour. Phase 4's shared-slot feasibility test remains the gate. |
+| Shared-salt finding is only medium-confidence | **RESOLVED 2026-08-18.** The shared-salt scattered set (desert pyramid / igloo / jungle pyramid / swamp hut) was captured against the live BDS 1.26.43 server (`generate-scattered`, 5 seeds × 4 ids) and **confirms 100% exact placement** (`fixtures/corpus-scattered-1.21.40.json`, `be-corpus report`). `versions/1.21.40.json` confidence bumped to `high` with a CI regression gate. |
 | **Complex relational queries have no completeness guarantee** — "no results" may mean "none exist" or "not found yet", and users will read it as the former | Display the active mode and elapsed search space prominently. Never render an empty result set as "no such seed exists". |
 | Join planner picks a bad order and a query runs pathologically slow | Selectivity estimates are heuristics; add a per-query cost ceiling that triggers re-planning, and surface a "this query is expensive because…" explanation. |
 | Expressive queries invite unsatisfiable ones | Static feasibility analysis with explained reasons (§3.1); live feedback in the route builder as constraints are edited, not just at submit. |
@@ -768,11 +768,17 @@ cargo run -p be-corpus -- generate-scattered --seeds 5 --host ai-assistant-01.lo
 cargo run -p be-corpus -- report fixtures/corpus-scattered-1.21.40.json
 ```
 
-**Expected outcome / next step:** if `report` on the scattered corpus shows 100%, update
-`versions/1.21.40.json` for the four scattered structures (`desert_pyramid`, `igloo`,
-`jungle_pyramid`, `swamp_hut`) from `confidence: "medium"` and the shared-salt
-provenance to reflect empirical confirmation, and clear the Phase 0 "shared-salt NOT
-confirmed" caveat. Record the real captured fixture (never fabricate).
+**Live validation — DONE 2026-08-18.** Ran against the live `mc-bedrock` (1.26.43) server:
+- `generate-scattered --seeds 5` → `fixtures/corpus-scattered-1.21.40.json` (20 samples),
+  `report` → **100% exact** on all four scattered ids.
+- `verify-seed` on returned seeds 0 and 1 → **0 FAIL**; every structure that responded
+  PASSed (the remainder were honest SKIPs — `ocean_monument` genuinely absent near
+  origin, others "no parseable response" from docker-log scrape timing).
+- `versions/1.21.40.json`: scattered set bumped to `confidence: high` + provenance note;
+  Phase 0 caveat cleared; a CI regression gate was added for the scattered corpus.
+- Tooling improvement made during the run: `response_wait` 1.5s→4s and a 5s settle after
+  world recreation, because the first `/locate` right after a fresh world boot races
+  chunk generation (was producing spurious "no parseable response" SKIPs).
 
 ### #2 — constellation result caching (deferred, do not pick up yet)
 
@@ -789,9 +795,10 @@ why `verify-seed` uses the corpus's region-backed-out placement check instead.
 
 ### Options for next steps (pick one or more next session)
 
-1. **Run the live validation** (commands above): capture + report the scattered corpus,
-   update `versions/1.21.40.json` confidence, and run `verify-seed` on a few returned
-   seeds. Closes the last Phase 0 gate caveat.
+1. ~~**Run the live validation**~~ **DONE 2026-08-18** (see above): scattered corpus
+   captured + reported 100%, version table + Phase 0 caveat updated, Phase C verified
+   returned seeds with no failures. (Re-running `generate-scattered`/`verify-seed` is
+   still the way to widen the corpus or check new seeds.)
 2. **Constellation result caching** (#2) — now that the SIMD work is wired and guarded.
 3. **GPU compute** (Phase 6 remaining) — the other documented optimization lever.
 4. **UI/acceptance** — §7 Phase 5 manual acceptance runs (browser, mode selection,

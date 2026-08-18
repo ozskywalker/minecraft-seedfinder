@@ -1,7 +1,7 @@
 {
   "version": "1.21.40",
   "seed_bits": 64,
-  "validated_against": "STRUCTURES: BDS 1.26.43.1 live server — village/ocean_monument/ancient_city/pillager_outpost/shipwreck/buried_treasure/ruined_portal predicted EXACTLY on random-seed world -2932807814640844199 AND 4 fresh per-seed worlds (42, 12345, 777, 20240812); 30-sample corpus (seeds 0..4) at 100% accuracy (fixtures/corpus-1.21.40.json). trial_chambers returns bounding-box CENTRE (block%16!=8), jigsaw, salt NOT confirmable via /locate (PLAN §4/§2.8). BIOMES: validated GREEN 2026-08-12 — cubiomes matches BDS /locate biome 100% on both a matched-version 1.21.40.03 container (fixtures/biome-corpus-1.21.40.bds.json) and the live 1.26.43 server (fixtures/biome-corpus-1.21.40.json); earlier 18% was a bridge y/z bug now fixed (see be-biome lib.rs).",
+  "validated_against": "STRUCTURES: BDS 1.26.43.1 live server — village/ocean_monument/ancient_city/pillager_outpost/shipwreck/buried_treasure/ruined_portal predicted EXACTLY on random-seed world -2932807814640844199 AND 4 fresh per-seed worlds (42, 12345, 777, 20240812); 30-sample corpus (seeds 0..4) at 100% accuracy (fixtures/corpus-1.21.40.json). SHARED-SALT SCATTERED SET (desert_pyramid/igloo/jungle_pyramid/swamp_hut): shared placement CONFIRMED EXACT on 20 samples (5 seeds x 4 ids), fixtures/corpus-scattered-1.21.40.json (2026-08-18). trial_chambers returns bounding-box CENTRE (block%16!=8), jigsaw, salt NOT confirmable via /locate (PLAN §4/§2.8). BIOMES: validated GREEN 2026-08-12 — cubiomes matches BDS /locate biome 100% on both a matched-version 1.21.40.03 container (fixtures/biome-corpus-1.21.40.bds.json) and the live 1.26.43 server (fixtures/biome-corpus-1.21.40.json); earlier 18% was a bridge y/z bug now fixed (see be-biome lib.rs).",
   "structures": {
     "desert_pyramid": {
       "salt": 14357617,
@@ -10,7 +10,7 @@
       "distribution": "linear",
       "biomes": ["desert", "desert_hills", "desert_lakes"],
       "shares_slot_with": ["igloo", "jungle_pyramid", "swamp_hut"],
-      "provenance": "ChunkBiomesGUI Bfinders.c + MCBEStructureFinder + bedrockified; PLAN §2.5",
+      "provenance": "ChunkBiomesGUI Bfinders.c + MCBEStructureFinder + bedrockified; PLAN §2.5; shared placement CONFIRMED EXACT against live BDS 1.26.43 (scattered corpus, 5 seeds)",
       "confidence": "high"
     },
     "igloo": {
@@ -20,8 +20,8 @@
       "distribution": "linear",
       "biomes": ["icePlains", "coldTaiga"],
       "shares_slot_with": ["desert_pyramid", "jungle_pyramid", "swamp_hut"],
-      "provenance": "PLAN §2.5 shared-salt scattered feature",
-      "confidence": "medium"
+      "provenance": "PLAN §2.5 shared-salt scattered feature; shared placement CONFIRMED EXACT against live BDS 1.26.43 (scattered corpus, 5 seeds)",
+      "confidence": "high"
     },
     "jungle_pyramid": {
       "salt": 14357617,
@@ -30,7 +30,7 @@
       "distribution": "linear",
       "biomes": ["jungle", "jungle_hills"],
       "shares_slot_with": ["desert_pyramid", "igloo", "swamp_hut"],
-      "provenance": "ChunkBiomesGUI Bfinders.c + MCBEStructureFinder; PLAN §2.5",
+      "provenance": "ChunkBiomesGUI Bfinders.c + MCBEStructureFinder; PLAN §2.5; shared placement CONFIRMED EXACT against live BDS 1.26.43 (scattered corpus, 5 seeds)",
       "confidence": "high"
     },
     "swamp_hut": {
@@ -40,7 +40,7 @@
       "distribution": "linear",
       "biomes": ["swamp", "swampland"],
       "shares_slot_with": ["desert_pyramid", "igloo", "jungle_pyramid"],
-      "provenance": "ChunkBiomesGUI Bfinders.c + MCBEStructureFinder; PLAN §2.5",
+      "provenance": "ChunkBiomesGUI Bfinders.c + MCBEStructureFinder; PLAN §2.5; shared placement CONFIRMED EXACT against live BDS 1.26.43 (scattered corpus, 5 seeds)",
       "confidence": "high"
     },
     "village": {

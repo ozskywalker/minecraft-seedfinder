@@ -179,11 +179,12 @@ just each other:
 
 **Remaining honesty caveats** (do not overclaim past these; tracked in `PLAN.md` §8):
 
-- **Shared-salt placement is NOT yet confirmed.** The validated structure corpus
-  (village, monument, city, outpost, shipwreck, treasure, portal) does not include the
-  shared-salt "scattered" set (desert pyramid / igloo / jungle pyramid / swamp hut).
-  Their 100% agreement does not confirm shared-slot behaviour — treat those version-table
-  entries as `[UNCONFIRMED]` until a corpus sample covers them.
+- ~~**Shared-salt placement is NOT yet confirmed.**~~ **RESOLVED 2026-08-18.** The
+  shared-salt "scattered" set (desert pyramid / igloo / jungle pyramid / swamp hut) was
+  captured against the live BDS 1.26.43 server (`generate-scattered`, 5 seeds × 4 ids)
+  and confirms **100% exact shared placement** (`fixtures/corpus-scattered-1.21.40.json`,
+  `be-corpus report`, CI-gated). Version-table entries for the scattered set are now
+  `confidence: high`.
   - Trial-chamber distribution also has unresolved source conflicts and is flagged
     `[UNCONFIRMED]` in the version tables.
 - **Biome parity is empirically observed, not source-proven**, and only for the corpus's

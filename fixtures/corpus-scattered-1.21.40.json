@@ -1,0 +1,185 @@
+{
+  "samples": [
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "desert_pyramid",
+      "observed": {
+        "x": -200,
+        "z": 824
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "igloo",
+      "observed": {
+        "x": -200,
+        "z": 824
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "jungle_pyramid",
+      "observed": {
+        "x": -200,
+        "z": 824
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 0,
+      "structure": "swamp_hut",
+      "observed": {
+        "x": -200,
+        "z": 824
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "desert_pyramid",
+      "observed": {
+        "x": -712,
+        "z": -1528
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "igloo",
+      "observed": {
+        "x": -712,
+        "z": -1528
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "jungle_pyramid",
+      "observed": {
+        "x": -712,
+        "z": -1528
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 1,
+      "structure": "swamp_hut",
+      "observed": {
+        "x": -712,
+        "z": -1528
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "desert_pyramid",
+      "observed": {
+        "x": 808,
+        "z": -312
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "igloo",
+      "observed": {
+        "x": 808,
+        "z": -312
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "jungle_pyramid",
+      "observed": {
+        "x": 808,
+        "z": -312
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 2,
+      "structure": "swamp_hut",
+      "observed": {
+        "x": 808,
+        "z": -312
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "desert_pyramid",
+      "observed": {
+        "x": -776,
+        "z": 264
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "igloo",
+      "observed": {
+        "x": -776,
+        "z": 264
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "jungle_pyramid",
+      "observed": {
+        "x": -776,
+        "z": 264
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 3,
+      "structure": "swamp_hut",
+      "observed": {
+        "x": -776,
+        "z": 264
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "desert_pyramid",
+      "observed": {
+        "x": -472,
+        "z": -152
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "igloo",
+      "observed": {
+        "x": -472,
+        "z": -152
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "jungle_pyramid",
+      "observed": {
+        "x": -472,
+        "z": -152
+      }
+    },
+    {
+      "version": "1.21.40",
+      "seed": 4,
+      "structure": "swamp_hut",
+      "observed": {
+        "x": -472,
+        "z": -152
+      }
+    }
+  ],
+  "biome_samples": []
+}

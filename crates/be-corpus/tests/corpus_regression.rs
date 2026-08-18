@@ -118,3 +118,50 @@ fn biome_parity_gate_is_green() {
         );
     }
 }
+
+/// Shared-salt scattered set regression gate (PLAN §2.5, #3).
+///
+/// `fixtures/corpus-scattered-1.21.40.json` was captured against the live BDS 1.26.43
+/// server via `be-corpus generate-scattered` (5 seeds × 4 scattered ids). It pins the
+/// shared placement math (salt 14357617, spacing 32, chunk_range 24, linear) for
+/// desert_pyramid / igloo / jungle_pyramid / swamp_hut at 100% so any drift fails loudly.
+const SCATTERED_PATH: &str = "fixtures/corpus-scattered-1.21.40.json";
+
+fn workspace_root() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .ancestors()
+        .nth(2)
+        .expect("workspace root is two levels above be-corpus crate")
+        .to_path_buf()
+}
+
+#[test]
+fn scattered_set_accuracy_holds() {
+    let path = workspace_root().join(SCATTERED_PATH);
+    let corpus = Corpus::load(path.to_str().unwrap()).expect("scattered corpus fixture loads");
+    assert!(!corpus.is_empty(), "scattered corpus must not be empty");
+
+    let version = Version::builtin_1_21_40();
+    let rate = accuracy::overall_rate(&corpus, &version, TOLERANCE)
+        .expect("scattered corpus has comparable samples");
+    assert!(
+        rate >= MIN_RATE,
+        "scattered-set accuracy {:.1}% dropped below gate {:.1}% (shared placement drift?)",
+        rate * 100.0,
+        MIN_RATE * 100.0
+    );
+}
+
+#[test]
+fn scattered_set_has_all_four_ids() {
+    let path = workspace_root().join(SCATTERED_PATH);
+    let corpus = Corpus::load(path.to_str().unwrap()).expect("scattered corpus fixture loads");
+    let structures: Vec<&str> = corpus
+        .samples
+        .iter()
+        .map(|s| s.structure.as_str())
+        .collect();
+    for id in ["desert_pyramid", "igloo", "jungle_pyramid", "swamp_hut"] {
+        assert!(structures.contains(&id), "scattered corpus missing {id}");
+    }
+}

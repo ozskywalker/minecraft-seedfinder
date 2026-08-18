@@ -38,12 +38,14 @@ validation container used its own volume and a distinct name + port.
 
 ### Key configuration (current)
 
-- **Bedrock (`mc-bedrock`, 1.26.43):** `allow-cheats=false` (commands are cheat-only →
+- **Bedrock (`mc-bedrock`, 1.26.43):** `allow-cheats=true` (commands are cheat-only →
   must be enabled before `/locate`), `level-seed=` empty (world uses a random seed;
   read it back with `/seed`), `online-mode=true`, `allow-list=true`.
   - **Structure params: validated.** `be-struct` placement is confirmed **100%** against
     this server (PLAN §7), so treat structure params as confirmed across the
-    1.21.x–1.26.43 range.
+    1.21.x–1.26.43 range. **Shared-salt scattered set** (desert pyramid / igloo /
+    jungle pyramid / swamp hut) also **confirmed 100%** (2026-08-18,
+    `fixtures/corpus-scattered-1.21.40.json`).
   - **Biome params: validated (GREEN).** cubiomes matches the real BDS server's
     `/locate biome` output at **100%** on both `biome-corpus-1.21.40.json` (captured
     against this 1.26.43 server) and `biome-corpus-1.21.40.bds.json` (captured against

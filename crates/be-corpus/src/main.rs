@@ -339,7 +339,9 @@ fn cmd_generate_scattered(args: &[String]) -> ExitCode {
         cfg.container = c.clone();
     }
     cfg.startup_wait = Duration::from_secs(120);
-    cfg.response_wait = Duration::from_millis(1500);
+    // 4s: the first /locate right after a fresh world boot can be slow to flush to
+    // `docker logs` while chunks generate (1.5s was too short → spurious SKIPs).
+    cfg.response_wait = Duration::from_millis(4000);
     let bds = RemoteBedrock::new(cfg);
     let version = Version::builtin_1_21_40();
 
@@ -350,6 +352,9 @@ fn cmd_generate_scattered(args: &[String]) -> ExitCode {
             eprintln!("  recreate failed for seed {seed}: {e}; skipping");
             continue;
         }
+        // The first /locate right after a world boot can race chunk generation and
+        // return no response; let the freshly-restarted world settle first.
+        std::thread::sleep(Duration::from_secs(5));
         match bds.locate(be_corpus::TEMPLE_LOCATE_ID) {
             Ok(Some(LocateResult::Found { x, z, .. })) => {
                 let observed = BlockPos::new(x, z);
@@ -416,7 +421,9 @@ fn cmd_verify_seed(args: &[String]) -> ExitCode {
         cfg.container = c.clone();
     }
     cfg.startup_wait = Duration::from_secs(120);
-    cfg.response_wait = Duration::from_millis(1500);
+    // 4s: the first /locate right after a fresh world boot can be slow to flush to
+    // `docker logs` while chunks generate (1.5s was too short → spurious SKIPs).
+    cfg.response_wait = Duration::from_millis(4000);
     let bds = RemoteBedrock::new(cfg);
     let version = Version::builtin_1_21_40();
 
@@ -425,6 +432,8 @@ fn cmd_verify_seed(args: &[String]) -> ExitCode {
         eprintln!("recreate failed: {e}");
         return ExitCode::FAILURE;
     }
+    // The first /locate right after a world boot can race chunk generation; settle.
+    std::thread::sleep(Duration::from_secs(5));
 
     let mut any_fail = false;
     let mut any_skip = false;
