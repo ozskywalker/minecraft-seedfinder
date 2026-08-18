@@ -81,6 +81,13 @@ and UI test/typecheck/build). `-Test -SkipPerf` skips only the slow SIMD release
 Contributors can also install the versioned git hooks once with `.\scripts\setup-hooks.ps1`
 (`pre-commit` = fmt + clippy; `pre-push` = the full `-Test` gate).
 
+**CI trigger behavior:** the GitHub CI workflow runs the full matrix on every pull request
+and on any push touching code, the UI, Cargo files, scripts, version/fixture data, or the
+workflow itself. Docs-only pushes (README, LICENSE, AGENTS, CLAUDE, PLAN, .gitignore,
+.gitattributes, .opencode, docs/) skip CI — they can't affect the build. `versions/*.json`
+and `fixtures/*` are compile-time embedded and feed the accuracy gate, so changes to them
+still run the full suite. Superseded runs on the same ref are auto-cancelled.
+
 ```bash
 # Rust — everything
 cargo build --workspace
