@@ -19,7 +19,8 @@
 
 use std::collections::HashMap;
 
-use be_struct::placement::structure_block_pos_streaming;
+use be_rng::BATCH_LANES;
+use be_struct::placement::{structure_block_pos_batched, structure_block_pos_streaming};
 use be_struct::region::floor_div;
 use be_struct::{Structure, Version};
 
@@ -140,6 +141,93 @@ impl<'a> Engine<'a> {
                 }
             })
             .collect()
+    }
+
+    /// **SIMD-batched sweep** (PLAN §6) for the common exhaustive shape: a single
+    /// structure variable anchored to origin (1 var, structure kind). Processes
+    /// `BATCH_LANES` consecutive seeds at once via [`structure_block_pos_batched`],
+    /// which is faster than the per-seed path because the batched MT init chains
+    /// vectorize.
+    ///
+    /// Returns the **same result set as [`search_range`]** for any query that matches
+    /// this shape (proven by test). For any other query shape it transparently falls
+    /// back to the scalar [`search_range`], so it is always a safe drop-in.
+    pub fn search_range_batched(&self, start: u32, end: u32) -> Vec<Candidate> {
+        // Applicability: exactly one variable of structure kind (⇒ every edge is to
+        // origin, since there are no other variables to anchor to).
+        if self.query.vars.len() != 1 {
+            return self.search_range(start, end);
+        }
+        let var = &self.query.vars[0];
+        let structure = match &var.kind {
+            VarKind::Structure(s) => s,
+            _ => return self.search_range(start, end),
+        };
+        let Some(st) = self.version.structures.get(structure) else {
+            return self.search_range(start, end);
+        };
+        let dist = st.distribution();
+
+        // Origin-anchored window (same for every seed in the sweep).
+        let none_pos = [None; 1];
+        let Some(window) = self.region_window(0, &none_pos) else {
+            return Vec::new();
+        };
+
+        let mut out = Vec::new();
+        let mut low = start;
+        while low < end {
+            // Lanes 0..valid_lanes are the seeds of this batch that fall in [start,end).
+            let valid_lanes = ((end as u64 - low as u64) as usize).min(BATCH_LANES);
+            // Collect per-lane so we can emit in ascending seed order (matching the
+            // scalar sweep's deterministic order), regardless of region-completion order.
+            let mut by_lane: [Option<Candidate>; BATCH_LANES] = std::array::from_fn(|_| None);
+            let mut remaining = valid_lanes;
+            for &(rx, rz) in &window {
+                if remaining == 0 {
+                    break;
+                }
+                let pos_batch = structure_block_pos_batched(
+                    low as u64,
+                    rx,
+                    rz,
+                    st.salt,
+                    st.spacing,
+                    st.chunk_range,
+                    dist,
+                );
+                for (lane, slot) in by_lane.iter_mut().enumerate().take(valid_lanes) {
+                    if slot.is_some() {
+                        continue;
+                    }
+                    let p = Pos {
+                        x: pos_batch[lane].0,
+                        z: pos_batch[lane].1,
+                    };
+                    // First region whose position satisfies the origin constraint —
+                    // exactly when the scalar `bind` would stop for this seed.
+                    if !self.satisfies(0, &p, &none_pos) {
+                        continue;
+                    }
+                    let seed = low.wrapping_add(lane as u32) as u64;
+                    let cand = Candidate {
+                        seed,
+                        positions: vec![p],
+                    };
+                    if self.verify(&cand) {
+                        *slot = Some(cand);
+                        remaining -= 1;
+                    }
+                }
+            }
+            for slot in by_lane.iter_mut().take(valid_lanes) {
+                if let Some(c) = slot.take() {
+                    out.push(c);
+                }
+            }
+            low = low.wrapping_add(BATCH_LANES as u32);
+        }
+        out
     }
 
     /// Streaming sweep over `[start, end)`: invoke `visit` once per verified
@@ -451,9 +539,50 @@ desert_pyramid t1 @v1 in 600..1200
         assert_eq!(seq, par, "parallel and sequential sweeps must agree");
     }
 
+    /// The SIMD-batched sweep must return the **identical result set** to the scalar
+    /// sweep for single-structure origin-anchored queries, across structures, ranges,
+    /// and seed ranges (including a range that doesn't start at 0).
     #[test]
-    fn verify_rejects_fake_result() {
-        // Build a candidate that violates its own edge and confirm verify() catches it.
+    fn batched_equals_scalar_for_single_var_origin() {
+        for (dsl, lo, hi) in [
+            ("village v1 @origin <= 800", 0u32, 1000u32),
+            ("village v1 @origin <= 800", 12345u32, 13000u32),
+            ("village v1 @origin in 500..1200", 0u32, 2000u32),
+            ("desert_pyramid d1 @origin <= 1500", 0u32, 2000u32),
+            ("ocean_monument m1 @origin in 2000..3000", 0u32, 2000u32),
+        ] {
+            let e = engine(dsl);
+            let scalar = e.search_range(lo, hi);
+            let batched = e.search_range_batched(lo, hi);
+            assert_eq!(
+                batched, scalar,
+                "batched sweep diverged from scalar for {dsl:?} over [{lo},{hi})"
+            );
+            // Every emitted candidate independently satisfies its own edges.
+            for c in &batched {
+                assert!(e.verify(c), "candidate must satisfy its own edges");
+            }
+        }
+    }
+
+    /// For any non-single-var shape the batched sweep must transparently fall back to
+    /// the scalar result.
+    #[test]
+    fn batched_falls_back_for_other_shapes() {
+        // Multi-variable query → fallback.
+        let e = engine(
+            "\
+village v1 @origin <= 800
+desert_pyramid t1 @v1 in 600..1200
+",
+        );
+        let scalar = e.search_range(0, 400);
+        let batched = e.search_range_batched(0, 400);
+        assert_eq!(batched, scalar, "multi-var must fall back to scalar");
+    }
+
+    #[test]
+    fn verify_rejects_fake_result() {        // Build a candidate that violates its own edge and confirm verify() catches it.
         let e = engine("village v1 @origin <= 800");
         let bad = Candidate {
             seed: 0,

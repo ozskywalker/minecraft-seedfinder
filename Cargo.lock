@@ -134,6 +134,7 @@ name = "be-search"
 version = "0.1.0"
 dependencies = [
  "be-biome",
+ "be-rng",
  "be-struct",
  "cubiomes-sys",
  "rayon",

@@ -198,6 +198,69 @@ pub fn first_n_into(seed: u32, n: usize, out: &mut [u32]) -> &[u32] {
     &out[..n]
 }
 
+/// Number of seeds processed in lockstep by [`first_n_batched`]. 8 = one 256-bit
+/// vector of `u32` lanes on AVX2 targets; the loops are written so the compiler can
+/// vectorize the independent per-lane init chains.
+pub const BATCH_LANES: usize = 8;
+
+/// **SIMD-friendly batched streaming twist** (PLAN §6): compute the first `n`
+/// tempered outputs for `BATCH_LANES` seeds at once, advancing every lane's MT19937
+/// init chain in lockstep.
+///
+/// The per-seed init recurrences are independent (each lane's `mt[i]` depends only on
+/// its own `mt[i-1]`), so processing them in parallel is exactly equivalent to running
+/// [`first_n_into`] once per seed — bit-identical output, proven by property test. The
+/// inner loops operate on contiguous `[u32; BATCH_LANES]` vectors, which LLVM
+/// vectorizes, amortising the ~400-step init-chain dependency chain across the batch.
+///
+/// `out` must be at least `BATCH_LANES * n` long; results are written lane-major:
+/// `out[lane * n + i]` is the `i`-th tempered output of `seeds[lane]`.
+pub fn first_n_batched(seeds: &[u32; BATCH_LANES], n: usize, out: &mut [u32]) {
+    assert!(
+        n <= MAX_STREAMING_N,
+        "first_n_batched supports n <= {} (got {n})",
+        MAX_STREAMING_N
+    );
+    assert!(
+        out.len() >= BATCH_LANES * n,
+        "out buffer too small: len {} < {}",
+        out.len(),
+        BATCH_LANES * n
+    );
+
+    // Lane-major windows: a[i][lane] == mt[i], b[i][lane] == mt[397 + i]. Making the
+    // *lane* the contiguous inner dimension keeps every per-lane step a plain vector
+    // so LLVM can SIMD it.
+    let mut a = [[0u32; BATCH_LANES]; MAX_STREAMING_N + 1];
+    let mut b = [[0u32; BATCH_LANES]; MAX_STREAMING_N + 1];
+    let mut cur: [u32; BATCH_LANES] = *seeds;
+    a[0] = cur;
+
+    // Roll each lane's init recurrence forward in lockstep.
+    let mut i = 1usize;
+    while i <= n {
+        cur = cur.map(|x| init_step(x, i));
+        a[i] = cur;
+        i += 1;
+    }
+    while i <= n + M {
+        cur = cur.map(|x| init_step(x, i));
+        if i >= M {
+            b[i - M] = cur;
+        }
+        i += 1;
+    }
+
+    // Twist window A against window B per lane, exactly as the scalar path does.
+    for j in 0..n {
+        for lane in 0..BATCH_LANES {
+            let y = (a[j][lane] & UPPER_MASK) | (a[j + 1][lane] & LOWER_MASK);
+            let mag = if y & 1 == 1 { MATRIX_A } else { 0 };
+            out[lane * n + j] = temper(b[j][lane] ^ (y >> 1) ^ mag);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -364,6 +427,68 @@ mod tests {
     fn first_n_into_rejects_too_large_n() {
         let mut buf = [0u32; STREAM_BUF];
         let _ = first_n_into(0, 228, &mut buf);
+    }
+
+    /// The batched twist must be bit-identical to running the scalar `first_n_into`
+    /// once per seed — this is the accuracy guarantee the whole SIMD batching rests on.
+    #[test]
+    fn batched_matches_scalar_first_n() {
+        // A spread of batch starting seeds, including wraps through u32::MAX.
+        let starts = [
+            0u32,
+            1,
+            5489,
+            0xC0FFEE,
+            0xFFFF_FFF0, // wraps over u32::MAX
+            0x8000_0000,
+            0x1234_5678,
+            0xDEAD_BEEF,
+        ];
+        for &start in &starts {
+            // Build a batch of consecutive seeds.
+            let mut seeds = [0u32; BATCH_LANES];
+            for (k, s) in seeds.iter_mut().enumerate() {
+                *s = start.wrapping_add(k as u32);
+            }
+            for n in [2usize, 4, 8, 227] {
+                let mut out = [0u32; BATCH_LANES * MAX_STREAMING_N];
+                first_n_batched(&seeds, n, &mut out);
+                for (lane, &seed) in seeds.iter().enumerate() {
+                    let mut buf = [0u32; STREAM_BUF];
+                    let scalar = first_n_into(seed, n, &mut buf);
+                    for i in 0..n {
+                        assert_eq!(
+                            out[lane * n + i],
+                            scalar[i],
+                            "seed {seed:#010x} lane {lane} n {n} out {i} diverged"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    /// The batched twist also matches the full `MersenneTwister` (the ultimate
+    /// reference) for the first n outputs of every lane.
+    #[test]
+    fn batched_matches_full_mt() {
+        let mut seeds = [0u32; BATCH_LANES];
+        for (k, s) in seeds.iter_mut().enumerate() {
+            *s = 1234u32.wrapping_add(k as u32);
+        }
+        for n in [2usize, 4] {
+            let mut out = [0u32; BATCH_LANES * MAX_STREAMING_N];
+            first_n_batched(&seeds, n, &mut out);
+            for (lane, &seed) in seeds.iter().enumerate() {
+                let full: Vec<u32> = {
+                    let mut rng = MersenneTwister::new(seed);
+                    (0..n).map(|_| rng.next_u32()).collect()
+                };
+                for i in 0..n {
+                    assert_eq!(out[lane * n + i], full[i], "seed {seed:#x} n {n} out {i}");
+                }
+            }
+        }
     }
 
     /// `mNextInt` power-of-two path uses a mask (`next & (bound-1)`).

@@ -6,6 +6,7 @@ license.workspace = true
 
 [dependencies]
 be-struct = { path = "../be-struct" }
+be-rng = { path = "../be-rng" }
 be-biome = { path = "../be-biome" }
 cubiomes-sys = { path = "../cubiomes-sys" }
 serde = { workspace = true }

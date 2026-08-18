@@ -31,6 +31,10 @@ caveats in that section.
     caller-supplied stack buffer (`STREAM_BUF`) instead of returning a `Vec`. This is
     the hot-path primitive used by structure placement, so the seed-lookup sweep does no
     heap allocation per call. Bit-identical to `first_n` (property-tested).
+  - `first_n_batched(&seeds, n, &mut out)` — the **SIMD-batched** variant (PLAN §6):
+    computes the first `n` tempered outputs for `BATCH_LANES` (8) consecutive seeds in
+    lockstep, so the ~400-step init chains vectorize across the batch. Bit-identical to
+    `first_n_into` per seed (property-tested); ~3.9× faster on the primitive.
   - `next_int(bound, raw)` / `next_int(bound)` — `mNextInt`: mask for power-of-two
     bounds, plain **biased** modulo otherwise.
 - **`crates/be-struct`** — structure placement math:
@@ -91,7 +95,10 @@ caveats in that section.
     low 32 bits, Phase B biome resolution over the high 32 bits). The sweep is
     allocation-light: it reuses the per-seed `positions`/memo buffers across seeds,
     keys the memo by borrowed `&str` (no `String` alloc), and hoists the structure-params
-    lookup out of the per-region loop.
+    lookup out of the per-region loop. `search_range_batched` is a SIMD-batched sweep
+    (PLAN §6) for the single-structure origin-anchored exhaustive case — bit-identical
+    result set to `search_range` (~3× faster), transparently falling back to the scalar
+    sweep for any other query shape.
   - `main` — the `be-search` CLI (`feasibility`, `search` subcommands).
 - **`crates/server`** — axum REST + SSE API, and the deliverable entry point:
   - `POST /api/search` — SSE stream of `mode` → `result`s (as found) → `done`, with
@@ -213,7 +220,7 @@ Seed searching is implemented per `PLAN.md`. Key model to remember:
 - The text DSL (`be-search::dsl`) is the single source of truth parsed by both the CLI
   and the server/UI's route builder — keep them sharing that parser rather than growing
   a second implementation.
-- **Partially implemented**: Phase 6 optimization (seed-lookup allocation speedups are
-  in; the remaining Phase 6 levers — SIMD batching across seeds, constellation result
+- **Partially implemented**: Phase 6 optimization (allocation speedups and SIMD
+  batching across seeds are in; the remaining Phase 6 levers — constellation result
   caching, GPU compute — are not). **Not yet implemented**: running the Phase C
   real-server verification of individual search-result seeds in CI.

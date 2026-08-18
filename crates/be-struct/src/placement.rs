@@ -11,7 +11,7 @@
 //! blockPos = ((regX*spacing + chunkInRegionX) << 4) + 8
 //! ```
 
-use be_rng::{first_n_into, MersenneTwister, STREAM_BUF};
+use be_rng::{first_n_batched, first_n_into, MersenneTwister, BATCH_LANES, MAX_STREAMING_N, STREAM_BUF};
 
 use crate::region::region_seed;
 
@@ -108,6 +108,59 @@ pub fn structure_block_pos_streaming(
     ((chunk_x << 4) + 8, (chunk_z << 4) + 8)
 }
 
+/// **SIMD-batched** variant of [`structure_block_pos`] (PLAN §6): compute the structure
+/// position for `BATCH_LANES` **consecutive** low-32 world seeds (`world_seed0` ..
+/// `world_seed0 + BATCH_LANES - 1`, wrapping through 2³²) in one fixed region, in
+/// lockstep.
+///
+/// Because the region seed is linear in the world seed (mod 2³²), consecutive world
+/// seeds yield consecutive region seeds, so the batched streaming twist
+/// ([`be_rng::first_n_batched`]) applies. Results are bit-identical to calling
+/// [`structure_block_pos_streaming`] per seed (proven by property test).
+pub fn structure_block_pos_batched(
+    world_seed0: u64,
+    reg_x: i64,
+    reg_z: i64,
+    salt: u32,
+    spacing: u32,
+    chunk_range: u32,
+    dist: Distribution,
+) -> [(i64, i64); BATCH_LANES] {
+    let draws = match dist {
+        Distribution::Linear => 2,
+        Distribution::Triangular => 4,
+    };
+
+    // Consecutive world seeds → consecutive region seeds (region_seed is linear in the
+    // world seed mod 2^32), so we compute the first region seed once and offset it.
+    let r0 = region_seed(world_seed0, reg_x, reg_z, salt) as u32;
+    let rseeds = std::array::from_fn(|lane| r0.wrapping_add(lane as u32));
+
+    let mut raw = [0u32; BATCH_LANES * MAX_STREAMING_N];
+    first_n_batched(&rseeds, draws, &mut raw);
+
+    let mut out = [(0i64, 0i64); BATCH_LANES];
+    for (lane, out_slot) in out.iter_mut().enumerate() {
+        let (offset_x, offset_z) = match dist {
+            Distribution::Linear => (
+                be_rng::next_int(chunk_range, raw[lane * draws]),
+                be_rng::next_int(chunk_range, raw[lane * draws + 1]),
+            ),
+            Distribution::Triangular => {
+                let x1 = be_rng::next_int(chunk_range, raw[lane * draws]);
+                let x2 = be_rng::next_int(chunk_range, raw[lane * draws + 1]);
+                let z1 = be_rng::next_int(chunk_range, raw[lane * draws + 2]);
+                let z2 = be_rng::next_int(chunk_range, raw[lane * draws + 3]);
+                (((x1 + x2) >> 1), ((z1 + z2) >> 1))
+            }
+        };
+        let chunk_x = reg_x * spacing as i64 + offset_x as i64;
+        let chunk_z = reg_z * spacing as i64 + offset_z as i64;
+        *out_slot = ((chunk_x << 4) + 8, (chunk_z << 4) + 8);
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -136,6 +189,45 @@ mod tests {
                             full, streamed,
                             "seed {wx:#x} reg({rx},{rz}) salt {salt} dist {dist:?}"
                         );
+                    }
+                }
+            }
+        }
+    }
+
+    /// The batched path must be bit-identical to the per-seed streaming path for every
+    /// lane, across regions, structures and seeds (including the u32 wrap).
+    #[test]
+    fn batched_matches_streaming_per_lane() {
+        let dists = [Linear, Triangular];
+        let params = [
+            (14357617u32, 32u32, 24u32),
+            (10387312, 34, 26),
+            (10387319, 80, 60),
+        ];
+        // Seeds spread through the u32 range, including a wrap within the batch.
+        for seed0 in [
+            0u64,
+            1,
+            5489,
+            0xFFFF_FFFCu64, // batch wraps through u32::MAX
+            0x1234_5678,
+        ] {
+            for &(salt, spacing, cr) in &params {
+                for &(rx, rz) in &[(0i64, 0i64), (1, -1), (-3, 2)] {
+                    for &dist in &dists {
+                        let batch =
+                            structure_block_pos_batched(seed0, rx, rz, salt, spacing, cr, dist);
+                        for (lane, &bp) in batch.iter().enumerate() {
+                            let seed = seed0.wrapping_add(lane as u64);
+                            let scalar =
+                                structure_block_pos_streaming(seed, rx, rz, salt, spacing, cr, dist);
+                            assert_eq!(
+                                bp, scalar,
+                                "seed0 {seed0:#x} lane {lane} (seed {seed:#x}) reg({rx},{rz}) \
+                                 salt {salt} dist {dist:?}"
+                            );
+                        }
                     }
                 }
             }

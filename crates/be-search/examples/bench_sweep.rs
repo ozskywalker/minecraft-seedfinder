@@ -1,18 +1,17 @@
-//! Performance harness for the seed-lookup sweep (Phase A structural search).
+//! Performance harness for the seed-lookup sweep (Phase A), scalar vs SIMD-batched.
 //!
 //! Run with: `cargo run -p be-search --release --example bench_sweep`
 //!
-//! Measures `Engine::search_range` over a contiguous range of low-32 seed bits for a
-//! representative query, i.e. the cost of "looking up" whether each seed satisfies the
-//! constraints. Also times `evaluate_seed` in a tight loop to isolate the executor's
-//! per-seed binding cost from the result collection/verify overhead.
+//! Compares `Engine::search_range` (per-seed) against `Engine::search_range_batched`
+//! (SIMD-batched) for single-structure origin-anchored queries. The two must return
+//! identical result sets (tested), so the difference here is pure speed.
 
 use std::hint::black_box;
 use std::time::Instant;
 
 use be_search::{parse, plan, Engine, Version};
 
-fn bench_sweep(dsl: &str, lo: u32, hi: u32) -> (usize, f64, f64, f64, usize) {
+fn bench(dsl: &str, lo: u32, hi: u32) -> (usize, f64, usize, f64) {
     let query = Box::leak(Box::new(parse(dsl).unwrap()));
     let version = Box::leak(Box::new(Version::builtin_1_21_40()));
     let plan = Box::leak(Box::new(plan(query)));
@@ -23,52 +22,45 @@ fn bench_sweep(dsl: &str, lo: u32, hi: u32) -> (usize, f64, f64, f64, usize) {
     };
     let seeds = (hi - lo) as f64;
 
-    // Warm up.
     black_box(engine.search_range(lo, lo + (hi - lo) / 100));
+    black_box(engine.search_range_batched(lo, lo + (hi - lo) / 100));
 
     let t0 = Instant::now();
     let hits = engine.search_range(lo, hi);
-    let dt = t0.elapsed().as_secs_f64();
+    let t1 = t0.elapsed().as_secs_f64();
     black_box(&hits);
 
-    // Raw evaluate_seed cost (no collection/verify), per seed.
-    let t1 = Instant::now();
-    let mut nfound = 0usize;
-    for low in lo..hi {
-        if black_box(engine.evaluate_seed(low as u64)).is_some() {
-            nfound += 1;
-        }
-    }
-    let dt2 = t1.elapsed().as_secs_f64();
+    let t2 = Instant::now();
+    let bhits = engine.search_range_batched(lo, hi);
+    let t3 = t2.elapsed().as_secs_f64();
+    black_box(&bhits);
 
-    (
-        hits.len(),
-        seeds / dt / 1e6,
-        dt / seeds * 1e9,
-        dt2 / seeds * 1e9,
-        nfound,
-    )
+    assert_eq!(hits, bhits, "scalar and batched sweeps must agree");
+    (hits.len(), seeds / t1 / 1e6, bhits.len(), seeds / t3 / 1e6)
 }
 
 fn main() {
     for (label, dsl, lo, hi) in [
+        ("village <= 800", "village v1 @origin <= 800", 0u32, 4_000_000u32),
+        ("village <= 300 (sparse)", "village v1 @origin <= 300", 0, 4_000_000),
         (
-            "village <= 800 of origin",
-            "village v1 @origin <= 800",
-            0u32,
-            4_000_000u32,
+            "desert_pyramid <= 1500",
+            "desert_pyramid d1 @origin <= 1500",
+            0,
+            4_000_000,
         ),
         (
-            "village + desert_pyramid (relative)",
-            "village v1 @origin <= 800\ndesert_pyramid t1 @v1 in 600..1200",
+            "woodland_mansion <= 3000 (sparse)",
+            "woodland_mansion m1 @origin <= 3000",
             0,
-            400_000,
+            4_000_000,
         ),
     ] {
-        let (hits, mps, ns_sweep, ns_eval, nfound) = bench_sweep(dsl, lo, hi);
+        let (hits, scalar_mps, _, batched_mps) = bench(dsl, lo, hi);
         println!(
-            "{label}: sweep {hits} hits, {mps:.2} M seeds/s ({ns_sweep:.0} ns/seed); \
-             raw evaluate_seed {ns_eval:.0} ns/seed ({nfound} bound in raw loop)"
+            "{label}: {hits} hits | scalar {scalar_mps:.2} M/s | batched {batched_mps:.2} M/s | \
+             speedup {:.2}x",
+            batched_mps / scalar_mps
         );
     }
 }
