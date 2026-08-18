@@ -66,3 +66,5 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           files: dist/seedfinder.exe
+          # Draft the release so a human can review/add notes before publishing.
+          draft: true
