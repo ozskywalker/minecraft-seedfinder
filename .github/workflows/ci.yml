@@ -1,11 +1,44 @@
-# CI — run on every push and pull request: lint, vet, and test the Rust workspace
-# and the web UI. Runs on Ubuntu (fast); the Windows release build is covered by the
-# release workflow on v* tags.
+# CI — lint, vet, and test the Rust workspace and the web UI. Runs on Ubuntu (fast);
+# the Windows release build is covered by the release workflow on v* tags.
+#
+# Trigger strategy (right-sized):
+#   * pull_request  — ALWAYS runs the full matrix (no path filter). This is the
+#     branch-protection gate, so required checks can never be skipped.
+#   * push          — runs the full matrix for any change that can affect the build
+#     (crates/, ui/, Cargo.*, deny.toml, scripts/, build.ps1, versions/, fixtures/,
+#     .github/), but SKIPS it for provably inert docs-only changes (see paths-ignore).
+#     Note: versions/*.json and fixtures/* are compile-time embedded / feed the 100%
+#     accuracy gate, so they deliberately run the full suite (not a lighter tier).
+#   * concurrency   — cancels superseded runs on the same ref (fast direct pushes).
+#
+# Future PR caveat: if a paths-ignore is ever added to `pull_request` too, the filtered
+# jobs must NOT be marked as required status checks (GitHub treats a skipped required
+# check as unsatisfied and blocks the merge). Keep pull_request unfiltered.
 name: CI
 
 on:
   push:
+    # Provably inert docs-only changes — skipping these is safe and cuts wasted runs.
+    # Do NOT add .github/**, scripts/**, build.ps1, Cargo.*, deny.toml, crates/,
+    # ui/, versions/, or fixtures/ here: a change to CI config or the build path must
+    # self-validate, and the version/fixture data is embedded and gate-checked.
+    paths-ignore:
+      - README.md
+      - LICENSE
+      - AGENTS.md
+      - CLAUDE.md
+      - PLAN.md
+      - .gitattributes
+      - .gitignore
+      - .opencode/**
+      - docs/**
   pull_request:
+
+# Cancel superseded runs on the same ref (per-workflow scope so tag pushes to the
+# release workflow don't cancel each other).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
