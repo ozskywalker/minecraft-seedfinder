@@ -108,7 +108,9 @@ pub fn run_search(job: Arc<SearchJob>, tx: mpsc::Sender<SearchEvent>) {
     let mut count = 0usize;
     // Stream structural candidates as found (Phase A), then resolve biomes per
     // candidate (Phase B). Use a per-candidate resolve so results stream continuously.
-    engine.search_range_visit(job.low_start, job.low_end, |cand| {
+    // SIMD-batched streaming sweep (PLAN §6): identical result set to the scalar
+    // visitor, ~3x faster for single-structure origin queries; falls back internally.
+    engine.search_range_visit_batched(job.low_start, job.low_end, |cand| {
         if !job.include_biomes {
             let positions = bind_positions(query, &cand.positions);
             let _ = tx.blocking_send(SearchEvent::Result {
@@ -200,6 +202,44 @@ mod tests {
         assert!(matches!(first, SearchEvent::Mode { ref mode, .. } if mode == "exhaustive"));
 
         // Consume results until Done.
+        let mut results = 0usize;
+        loop {
+            match rx.blocking_recv() {
+                Some(SearchEvent::Result { .. }) => results += 1,
+                Some(SearchEvent::Done { count }) => {
+                    assert_eq!(count, results);
+                    break;
+                }
+                other => panic!("unexpected event: {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn run_search_multivar_falls_back_to_scalar() {
+        // A multi-variable query can't use the SIMD-batched path; run_search must
+        // transparently fall back to the scalar streaming visitor without error.
+        let job = Arc::new(
+            SearchJob::from_dsl(
+                "village v1 @origin <= 800\ndesert_pyramid t1 @v1 in 600..1200",
+                0,
+                30,
+                0,
+                2,
+                0,
+                false,
+            )
+            .unwrap()
+            .unwrap(),
+        );
+        let (tx, mut rx) = mpsc::channel(16);
+        let job2 = job.clone();
+        std::thread::spawn(move || run_search(job2, tx));
+
+        // First event is the mode.
+        let first = rx.blocking_recv().expect("mode event");
+        assert!(matches!(first, SearchEvent::Mode { .. }));
+
         let mut results = 0usize;
         loop {
             match rx.blocking_recv() {

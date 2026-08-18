@@ -5,11 +5,22 @@
 //! Compares `Engine::search_range` (per-seed) against `Engine::search_range_batched`
 //! (SIMD-batched) for single-structure origin-anchored queries. The two must return
 //! identical result sets (tested), so the difference here is pure speed.
+//!
+//! `--check` runs a representative release-mode sweep and exits non-zero if the batched
+//! path is not materially faster than scalar — the CI regression guard (PLAN §6 / #4).
+//! The floor is deliberately generous (real speedup is ~3x) so it is robust to CI noise
+//! while still catching a catastrophic regression (e.g. the batched path silently
+//! becoming scalar, ~1.0x).
 
 use std::hint::black_box;
 use std::time::Instant;
 
 use be_search::{parse, plan, Engine, Version};
+
+/// Minimum speedup for the `--check` guard. Real batched is ~3x; we require only
+/// 1.15x (a value real builds clear with huge margin) so a genuine "no longer
+/// batched" regression (≈1.0x) fails while CI noise cannot trip it.
+const CHECK_FLOOR: f64 = 1.15;
 
 fn bench(dsl: &str, lo: u32, hi: u32) -> (usize, f64, usize, f64) {
     let query = Box::leak(Box::new(parse(dsl).unwrap()));
@@ -40,6 +51,8 @@ fn bench(dsl: &str, lo: u32, hi: u32) -> (usize, f64, usize, f64) {
 }
 
 fn main() {
+    let check = std::env::args().any(|a| a == "--check");
+    let mut worst = f64::INFINITY;
     for (label, dsl, lo, hi) in [
         (
             "village <= 800",
@@ -67,10 +80,21 @@ fn main() {
         ),
     ] {
         let (hits, scalar_mps, _, batched_mps) = bench(dsl, lo, hi);
+        let speedup = batched_mps / scalar_mps;
+        worst = worst.min(speedup);
         println!(
             "{label}: {hits} hits | scalar {scalar_mps:.2} M/s | batched {batched_mps:.2} M/s | \
-             speedup {:.2}x",
-            batched_mps / scalar_mps
+             speedup {speedup:.2}x"
         );
+    }
+    if check {
+        if worst < CHECK_FLOOR {
+            eprintln!(
+                "FAIL: worst speedup {worst:.2}x is below the {CHECK_FLOOR}x guard floor \
+                 (batched path appears to have regressed)."
+            );
+            std::process::exit(1);
+        }
+        println!("OK: worst speedup {worst:.2}x >= {CHECK_FLOOR}x floor");
     }
 }

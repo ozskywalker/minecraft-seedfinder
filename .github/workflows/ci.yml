@@ -34,6 +34,13 @@ jobs:
       - name: Test
         run: cargo test --workspace
 
+      # SIMD-batch regression guard (PLAN §6 / #4): the correctness half (batched ==
+      # scalar result set) already runs in `cargo test`; this runs the release-mode
+      # sweep bench with a generous speedup floor so the batched path can't silently
+      # regress to scalar (≈1.0x) without failing CI.
+      - name: SIMD-batch perf guard (release)
+        run: cargo run -p be-search --release --example bench_sweep -- --check
+
       - name: cargo-deny (licenses, advisories, bans, sources)
         uses: EmbarkStudios/cargo-deny-action@v2
 

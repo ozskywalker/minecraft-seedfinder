@@ -153,28 +153,60 @@ impl<'a> Engine<'a> {
     /// this shape (proven by test). For any other query shape it transparently falls
     /// back to the scalar [`search_range`], so it is always a safe drop-in.
     pub fn search_range_batched(&self, start: u32, end: u32) -> Vec<Candidate> {
+        let mut out = Vec::new();
+        if self.batched_single_var_for_each(start, end, |c| out.push(c.clone())) {
+            out
+        } else {
+            self.search_range(start, end)
+        }
+    }
+
+    /// **SIMD-batched streaming sweep** (PLAN §6): like [`search_range_batched`] but
+    /// invokes `visit` once per candidate in ascending seed order instead of collecting
+    /// into a `Vec` — the seam the server uses to stream results over SSE. For any query
+    /// shape other than the single-structure origin-anchored case it transparently falls
+    /// back to [`search_range_visit`].
+    ///
+    /// Sequential and deterministic; the callback is never invoked from a parallel
+    /// thread, so callers may safely accumulate into a non-threadsafe structure.
+    pub fn search_range_visit_batched<F>(&self, start: u32, end: u32, mut visit: F)
+    where
+        F: FnMut(&Candidate),
+    {
+        if !self.batched_single_var_for_each(start, end, |c| visit(c)) {
+            self.search_range_visit(start, end, visit);
+        }
+    }
+
+    /// The SIMD-batched single-structure origin-anchored sweep core. Invokes `emit` once
+    /// per verified candidate in ascending seed order. Returns `true` if the query
+    /// matched the batched shape (and was handled), `false` if the caller should fall
+    /// back to the scalar path.
+    fn batched_single_var_for_each<F>(&self, start: u32, end: u32, mut emit: F) -> bool
+    where
+        F: FnMut(&Candidate),
+    {
         // Applicability: exactly one variable of structure kind (⇒ every edge is to
         // origin, since there are no other variables to anchor to).
         if self.query.vars.len() != 1 {
-            return self.search_range(start, end);
+            return false;
         }
         let var = &self.query.vars[0];
         let structure = match &var.kind {
             VarKind::Structure(s) => s,
-            _ => return self.search_range(start, end),
+            _ => return false,
         };
         let Some(st) = self.version.structures.get(structure) else {
-            return self.search_range(start, end);
+            return false;
         };
         let dist = st.distribution();
 
         // Origin-anchored window (same for every seed in the sweep).
         let none_pos = [None; 1];
         let Some(window) = self.region_window(0, &none_pos) else {
-            return Vec::new();
+            return true; // handled: empty window → no candidates
         };
 
-        let mut out = Vec::new();
         let mut low = start;
         while low < end {
             // Lanes 0..valid_lanes are the seeds of this batch that fall in [start,end).
@@ -222,12 +254,12 @@ impl<'a> Engine<'a> {
             }
             for slot in by_lane.iter_mut().take(valid_lanes) {
                 if let Some(c) = slot.take() {
-                    out.push(c);
+                    emit(&c);
                 }
             }
             low = low.wrapping_add(BATCH_LANES as u32);
         }
-        out
+        true
     }
 
     /// Streaming sweep over `[start, end)`: invoke `visit` once per verified
@@ -563,6 +595,51 @@ desert_pyramid t1 @v1 in 600..1200
                 assert!(e.verify(c), "candidate must satisfy its own edges");
             }
         }
+    }
+
+    /// The batched **streaming** sweep must emit the identical candidate sequence (in
+    /// ascending seed order) as the scalar streaming sweep, for single-var origin queries
+    /// and non-structure single-var queries alike.
+    #[test]
+    fn batched_visitor_equals_scalar_visitor() {
+        for (dsl, lo, hi) in [
+            ("village v1 @origin <= 800", 0u32, 1000u32),
+            ("village v1 @origin <= 800", 12345u32, 13000u32),
+            ("village v1 @origin in 500..1200", 0u32, 2000u32),
+            ("desert_pyramid d1 @origin <= 1500", 0u32, 2000u32),
+            ("ocean_monument m1 @origin in 2000..3000", 0u32, 2000u32),
+        ] {
+            let e = engine(dsl);
+            let mut scalar = Vec::new();
+            e.search_range_visit(lo, hi, |c| scalar.push(c.clone()));
+            let mut batched = Vec::new();
+            e.search_range_visit_batched(lo, hi, |c| batched.push(c.clone()));
+            assert_eq!(
+                batched, scalar,
+                "batched visitor diverged from scalar for {dsl:?} over [{lo},{hi})"
+            );
+        }
+    }
+
+    /// For any non-single-var shape the batched streaming sweep must transparently fall
+    /// back to the scalar visitor (identical sequence).
+    #[test]
+    fn batched_visitor_falls_back_for_other_shapes() {
+        // Multi-variable query → fallback.
+        let e = engine(
+            "\
+village v1 @origin <= 800
+desert_pyramid t1 @v1 in 600..1200
+",
+        );
+        let mut scalar = Vec::new();
+        e.search_range_visit(0, 400, |c| scalar.push(c.clone()));
+        let mut batched = Vec::new();
+        e.search_range_visit_batched(0, 400, |c| batched.push(c.clone()));
+        assert_eq!(
+            batched, scalar,
+            "multi-var must fall back to scalar visitor"
+        );
     }
 
     /// For any non-single-var shape the batched sweep must transparently fall back to

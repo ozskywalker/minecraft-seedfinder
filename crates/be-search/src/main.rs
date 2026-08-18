@@ -121,7 +121,7 @@ fn cmd_search(args: &[String]) -> ExitCode {
     );
     println!("phase A: structural sweep over low32 in {low_start}..{low_end}");
 
-    let structural = engine.search_range(low_start, low_end);
+    let structural = engine.search_range_batched(low_start, low_end);
     println!("phase A: {} structural candidates", structural.len());
 
     if no_biomes {
