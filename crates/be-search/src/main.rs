@@ -143,9 +143,7 @@ fn cmd_search(args: &[String]) -> ExitCode {
     let mc = cubiomes_sys::mc_latest();
     let mut biome_engine = BiomeEngine::new(&query, &map, mc);
     if !seeds_only {
-        println!(
-            "phase B: biome resolution over high32 in {high_start}..{high_end} (satisficing)"
-        );
+        println!("phase B: biome resolution over high32 in {high_start}..{high_end} (satisficing)");
     }
 
     let mut emitted = 0usize;

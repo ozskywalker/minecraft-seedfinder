@@ -565,7 +565,9 @@ fn cmd_generate_scattered_type(args: &[String]) -> ExitCode {
         }
     }
 
-    let path = out.map(String::as_str).unwrap_or("corpus-scattered-type.json");
+    let path = out
+        .map(String::as_str)
+        .unwrap_or("corpus-scattered-type.json");
     if let Err(e) = corpus.save(path) {
         eprintln!("error writing corpus {path}: {e}");
         return ExitCode::FAILURE;
@@ -621,9 +623,11 @@ fn cmd_report_scattered_type(args: &[String]) -> ExitCode {
     seeds.sort_unstable();
     seeds.dedup();
 
+    println!("scattered-type report (temple slot biome consistency, within {tolerance} blocks)\n");
     println!(
-        "scattered-type report (temple slot biome consistency, within {tolerance} blocks)\n");
-    println!("{:<8} {:<10} {:<14} {:<12} {:<12} {:>10}  {:<0}", "seed", "type", "biome(id)", "slot", "obs biome", "dist", "verdict");
+        "{:<8} {:<10} {:<14} {:<12} {:<12} {:>10}  {:<0}",
+        "seed", "type", "biome(id)", "slot", "obs biome", "dist", "verdict"
+    );
     let mut confirmed = 0usize;
     let mut total = 0usize;
     let mut no_prediction = 0usize;
@@ -648,7 +652,14 @@ fn cmd_report_scattered_type(args: &[String]) -> ExitCode {
                 no_prediction += 1;
                 println!(
                     "{:<8} {:<10} {:<14} ({}, {:<10}) {:<12} {:>10}  {:<0}",
-                    seed, "none", "no-gate", slot.x, slot.z, "-", "-", "no scattered gate biome at slot"
+                    seed,
+                    "none",
+                    "no-gate",
+                    slot.x,
+                    slot.z,
+                    "-",
+                    "-",
+                    "no scattered gate biome at slot"
                 );
             }
             Some(ty) => {
@@ -660,10 +671,14 @@ fn cmd_report_scattered_type(args: &[String]) -> ExitCode {
                     .map(|b| b.observed);
                 match obs {
                     Some(op) => {
-                        let dist =
-                            (((slot.x - op.x) as f64).powi(2) + ((slot.z - op.z) as f64).powi(2))
-                                .sqrt() as u64;
-                        let verdict = if dist <= tolerance { "CONFIRMED" } else { "inconsistent" };
+                        let dist = (((slot.x - op.x) as f64).powi(2)
+                            + ((slot.z - op.z) as f64).powi(2))
+                        .sqrt() as u64;
+                        let verdict = if dist <= tolerance {
+                            "CONFIRMED"
+                        } else {
+                            "inconsistent"
+                        };
                         if dist <= tolerance {
                             confirmed += 1;
                         }
@@ -867,8 +882,11 @@ fn verify_one_seed(
             Ok(Some(LocateResult::Found { x, z, .. })) => {
                 let observed = BlockPos::new(x, z);
                 let predicted = be_corpus::predict_for_region(version, id, seed, observed);
-                let verdict =
-                    be_corpus::compare(predicted, Some(LocateResult::Found { x, z, y: None }), tolerance);
+                let verdict = be_corpus::compare(
+                    predicted,
+                    Some(LocateResult::Found { x, z, y: None }),
+                    tolerance,
+                );
                 match &verdict {
                     be_corpus::Verdict::Pass => {
                         println!("  {id}: PASS (observed ({x}, {z}))");

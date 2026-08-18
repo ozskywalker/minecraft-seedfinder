@@ -139,7 +139,10 @@ fn every_anchor_structure_is_modelled_and_predicts() {
             .unwrap_or_else(|| panic!("{id} not modelled"));
         // Self-consistency: prediction of the region the observation lies in must
         // reproduce the observation (the compare layer then reports PASS).
-        assert_eq!(predicted, observed, "{id} region-backed-out must reproduce placement");
+        assert_eq!(
+            predicted, observed,
+            "{id} region-backed-out must reproduce placement"
+        );
         assert_eq!(
             compare(
                 predict_for_region(&v, id, 12345678, observed),
