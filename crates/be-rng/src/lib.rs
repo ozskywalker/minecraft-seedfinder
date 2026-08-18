@@ -165,7 +165,11 @@ pub fn first_n_into(seed: u32, n: usize, out: &mut [u32]) -> &[u32] {
         "first_n_into supports n <= {} (got {n})",
         MAX_STREAMING_N
     );
-    assert!(out.len() >= n, "out buffer too small: len {} < n {n}", out.len());
+    assert!(
+        out.len() >= n,
+        "out buffer too small: len {} < n {n}",
+        out.len()
+    );
 
     // Window A: mt[0..=n]; window B: mt[397..=397+n]. Both fit in fixed stack arrays;
     // only the touched entries are written, but declaring them const-sized lets the
@@ -395,7 +399,8 @@ mod tests {
                 let mut buf = [0u32; STREAM_BUF];
                 let got = first_n_into(seed, n, &mut buf);
                 assert_eq!(
-                    got, expected.as_slice(),
+                    got,
+                    expected.as_slice(),
                     "seed {seed:#010x} n {n}: first_n_into diverged"
                 );
             }

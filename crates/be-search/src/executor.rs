@@ -582,7 +582,8 @@ desert_pyramid t1 @v1 in 600..1200
     }
 
     #[test]
-    fn verify_rejects_fake_result() {        // Build a candidate that violates its own edge and confirm verify() catches it.
+    fn verify_rejects_fake_result() {
+        // Build a candidate that violates its own edge and confirm verify() catches it.
         let e = engine("village v1 @origin <= 800");
         let bad = Candidate {
             seed: 0,

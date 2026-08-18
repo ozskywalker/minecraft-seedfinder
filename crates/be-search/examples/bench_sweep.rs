@@ -41,8 +41,18 @@ fn bench(dsl: &str, lo: u32, hi: u32) -> (usize, f64, usize, f64) {
 
 fn main() {
     for (label, dsl, lo, hi) in [
-        ("village <= 800", "village v1 @origin <= 800", 0u32, 4_000_000u32),
-        ("village <= 300 (sparse)", "village v1 @origin <= 300", 0, 4_000_000),
+        (
+            "village <= 800",
+            "village v1 @origin <= 800",
+            0u32,
+            4_000_000u32,
+        ),
+        (
+            "village <= 300 (sparse)",
+            "village v1 @origin <= 300",
+            0,
+            4_000_000,
+        ),
         (
             "desert_pyramid <= 1500",
             "desert_pyramid d1 @origin <= 1500",

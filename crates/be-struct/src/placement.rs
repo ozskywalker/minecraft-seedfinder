@@ -11,7 +11,9 @@
 //! blockPos = ((regX*spacing + chunkInRegionX) << 4) + 8
 //! ```
 
-use be_rng::{first_n_batched, first_n_into, MersenneTwister, BATCH_LANES, MAX_STREAMING_N, STREAM_BUF};
+use be_rng::{
+    first_n_batched, first_n_into, MersenneTwister, BATCH_LANES, MAX_STREAMING_N, STREAM_BUF,
+};
 
 use crate::region::region_seed;
 
@@ -220,8 +222,9 @@ mod tests {
                             structure_block_pos_batched(seed0, rx, rz, salt, spacing, cr, dist);
                         for (lane, &bp) in batch.iter().enumerate() {
                             let seed = seed0.wrapping_add(lane as u64);
-                            let scalar =
-                                structure_block_pos_streaming(seed, rx, rz, salt, spacing, cr, dist);
+                            let scalar = structure_block_pos_streaming(
+                                seed, rx, rz, salt, spacing, cr, dist,
+                            );
                             assert_eq!(
                                 bp, scalar,
                                 "seed0 {seed0:#x} lane {lane} (seed {seed:#x}) reg({rx},{rz}) \
